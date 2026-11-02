@@ -11,27 +11,32 @@ class VpnPermissionHelper(
 ) {
     companion object {
         private const val TAG = "VpnPermissionHelper"
+        const val REQ_CODE_VPN = 1001
     }
 
     fun prepareVpn(): Boolean {
         return try {
             val intent = VpnService.prepare(activity)
             if (intent != null) {
-                activity.startActivityForResult(intent, 1001)
-                Log.i(TAG, "VPN permission requested")
+                Log.i(TAG, "VPN permission request opened")
+                activity.startActivityForResult(intent, REQ_CODE_VPN)
                 false
             } else {
                 Log.i(TAG, "VPN permission already granted")
                 true
             }
         } catch (throwable: Throwable) {
-            Log.e(TAG, "VPN permission preparation failed", throwable)
+            Log.e(TAG, "VPN permission request failed", throwable)
             false
         }
     }
 
     fun openVpnSettings() {
-        val intent = Intent(Settings.ACTION_VPN_SETTINGS)
-        activity.startActivity(intent)
+        try {
+            val intent = Intent(Settings.ACTION_VPN_SETTINGS)
+            activity.startActivity(intent)
+        } catch (throwable: Throwable) {
+            Log.e(TAG, "Unable to open VPN settings", throwable)
+        }
     }
 }
