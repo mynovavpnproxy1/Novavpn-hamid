@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,17 +17,29 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MiscellaneousServices
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.SignalCellularAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,9 +49,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,153 +74,910 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+enum class AppScreen {
+    HOME,
+    LOCATION,
+    SETTINGS,
+    THEME,
+    AUTO_CONNECT,
+    AD
+}
+
 @Composable
 fun NovaVpnApp() {
-    var isConnected by rememberSaveable { mutableStateOf(false) }
-    val statusLabel = if (isConnected) stringResource(R.string.connected) else stringResource(R.string.disconnected)
+    var currentScreen by rememberSaveable { mutableStateOf(AppScreen.HOME) }
+    var connected by rememberSaveable { mutableStateOf(false) }
+    var themeMode by rememberSaveable { mutableStateOf("Dark") }
+    var autoConnect by rememberSaveable { mutableStateOf(false) }
+    var killSwitch by rememberSaveable { mutableStateOf(true) }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF020D19),
+                        Color(0xFF071E33),
+                        Color(0xFF0B2642)
+                    )
+                )
+            )
+            .padding(18.dp),
+        contentAlignment = Alignment.Center
     ) {
+        when (currentScreen) {
+            AppScreen.HOME -> HomeScreen(
+                connected = connected,
+                onConnectToggle = { connected = !connected },
+                onOpenLocation = { currentScreen = AppScreen.LOCATION },
+                onOpenSettings = { currentScreen = AppScreen.SETTINGS },
+                onOpenTheme = { currentScreen = AppScreen.THEME },
+                onOpenAutoConnect = { currentScreen = AppScreen.AUTO_CONNECT },
+                onOpenAd = { currentScreen = AppScreen.AD }
+            )
+
+            AppScreen.LOCATION -> LocationScreen(
+                onBack = { currentScreen = AppScreen.HOME }
+            )
+
+            AppScreen.SETTINGS -> SettingsScreen(
+                onBack = { currentScreen = AppScreen.HOME },
+                themeMode = themeMode,
+                onTheme = { currentScreen = AppScreen.THEME },
+                autoConnect = autoConnect,
+                killSwitch = killSwitch,
+                onToggleAuto = { autoConnect = !autoConnect },
+                onToggleKill = { killSwitch = !killSwitch }
+            )
+
+            AppScreen.THEME -> ThemeScreen(
+                onBack = { currentScreen = AppScreen.SETTINGS },
+                selected = themeMode,
+                onSelect = {
+                    themeMode = it
+                    currentScreen = AppScreen.SETTINGS
+                }
+            )
+
+            AppScreen.AUTO_CONNECT -> AutoConnectScreen(
+                onBack = { currentScreen = AppScreen.SETTINGS },
+                autoConnect = autoConnect,
+                killSwitch = killSwitch,
+                onToggleAuto = { autoConnect = !autoConnect },
+                onToggleKill = { killSwitch = !killSwitch }
+            )
+
+            AppScreen.AD -> SponsoredAdScreen(
+                onClose = { currentScreen = AppScreen.HOME }
+            )
+        }
+    }
+}
+
+@Composable
+fun HomeScreen(
+    connected: Boolean,
+    onConnectToggle: () -> Unit,
+    onOpenLocation: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenTheme: () -> Unit,
+    onOpenAutoConnect: () -> Unit,
+    onOpenAd: () -> Unit
+) {
+    PhoneFrame {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF081A2C))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Menu,
+                    contentDescription = null,
+                    tint = Color(0xFFD7E7FF),
+                    modifier = Modifier.size(24.dp)
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LogoMarkSmall()
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = "NovaVPN",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+                SmallStatusDot()
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PillButton(text = "Auto", selected = true, onClick = onOpenAutoConnect)
+                LocationChip(onClick = onOpenLocation)
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                NeonConnectButton(
+                    connected = connected,
+                    onClick = onConnectToggle
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF0D2A45).copy(alpha = 0.75f))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = Color(0xFF86D8FF),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Column {
+                        Text(
+                            text = "Your privacy is our priority",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Secure • Fast • Reliable",
+                            color = Color(0xFFB3C7E9),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                GhostTextButton("Settings", onClick = onOpenSettings)
+                GhostTextButton("Theme", onClick = onOpenTheme)
+                GhostTextButton("Ad", onClick = onOpenAd)
+            }
+        }
+    }
+}
+
+@Composable
+fun LocationScreen(onBack: () -> Unit) {
+    PhoneFrame {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF081A2C))
+                .padding(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clickable { onBack() }
+                )
+                Spacer(modifier = Modifier.size(12.dp))
+                Text(
+                    text = "Select Location",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            SearchField()
+            Spacer(modifier = Modifier.height(14.dp))
+
+            val locations = listOf(
+                LocationItem("United Kingdom", "London", "45 ms", "🇬🇧"),
+                LocationItem("Germany", "Frankfurt", "62 ms", "🇩🇪"),
+                LocationItem("United States", "New York", "68 ms", "🇺🇸"),
+                LocationItem("Canada", "Toronto", "72 ms", "🇨🇦"),
+                LocationItem("France", "Paris", "78 ms", "🇫🇷"),
+                LocationItem("Netherlands", "Amsterdam", "81 ms", "🇳🇱"),
+                LocationItem("Australia", "Sydney", "95 ms", "🇦🇺"),
+                LocationItem("Japan", "Tokyo", "102 ms", "🇯🇵"),
+                LocationItem("Singapore", "Singapore", "110 ms", "🇸🇬"),
+                LocationItem("Sweden", "Stockholm", "118 ms", "🇸🇪"),
+                LocationItem("Switzerland", "Zurich", "124 ms", "🇨🇭"),
+                LocationItem("Turkey", "Istanbul", "132 ms", "🇹🇷")
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                locations.forEach { item ->
+                    LocationRow(item)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsScreen(
+    onBack: () -> Unit,
+    themeMode: String,
+    onTheme: () -> Unit,
+    autoConnect: Boolean,
+    killSwitch: Boolean,
+    onToggleAuto: () -> Unit,
+    onToggleKill: () -> Unit
+) {
+    PhoneFrame {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF081A2C))
+                .padding(horizontal = 18.dp, vertical = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clickable { onBack() }
+                )
+                Spacer(modifier = Modifier.size(12.dp))
+                Text(
+                    text = "Settings",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            SettingsCard(
+                title = "Theme",
+                subtitle = if (themeMode == "Dark") "Dark mode" else "Light mode",
+                onClick = onTheme
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+            SettingsToggleCard(
+                title = "Auto-Connect",
+                subtitle = "Connect on app startup",
+                checked = autoConnect,
+                onCheckedChange = { onToggleAuto() }
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            SettingsToggleCard(
+                title = "Kill Switch",
+                subtitle = "Prevent traffic leak",
+                checked = killSwitch,
+                onCheckedChange = { onToggleKill() }
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color(0xFF0F2740))
+                    .padding(14.dp)
+            ) {
+                SupportRow(label = "Share App")
+                HorizontalDivider(color = Color(0xFF1A3A59), thickness = 1.dp)
+                SupportRow(label = "Privacy Policy")
+                HorizontalDivider(color = Color(0xFF1A3A59), thickness = 1.dp)
+                SupportRow(label = "Support")
+            }
+        }
+    }
+}
+
+@Composable
+fun ThemeScreen(onBack: () -> Unit, selected: String, onSelect: (String) -> Unit) {
+    PhoneFrame {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF081A2C))
+                .padding(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clickable { onBack() }
+                )
+                Spacer(modifier = Modifier.size(12.dp))
+                Text(
+                    text = "Theme",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+            ThemeOption(
+                title = "Light Mode",
+                subtitle = "Bright and clear",
+                selected = selected == "Light",
+                onClick = { onSelect("Light") }
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            ThemeOption(
+                title = "Dark Mode",
+                subtitle = "Easy on your eyes",
+                selected = selected == "Dark",
+                onClick = { onSelect("Dark") }
+            )
+        }
+    }
+}
+
+@Composable
+fun AutoConnectScreen(
+    onBack: () -> Unit,
+    autoConnect: Boolean,
+    killSwitch: Boolean,
+    onToggleAuto: () -> Unit,
+    onToggleKill: () -> Unit
+) {
+    PhoneFrame {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF081A2C))
+                .padding(horizontal = 18.dp, vertical = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clickable { onBack() }
+                )
+                Spacer(modifier = Modifier.size(12.dp))
+                Text(
+                    text = "Auto / Kill Switch",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                ShieldLogoSmall()
+            }
+            Spacer(modifier = Modifier.height(28.dp))
+
+            SettingsToggleCard(
+                title = "Auto Connect",
+                subtitle = "Automatically connect to the best server when you open the app.",
+                checked = autoConnect,
+                onCheckedChange = { onToggleAuto() }
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            SettingsToggleCard(
+                title = "Kill Switch",
+                subtitle = "Keep your internet safe when VPN is disconnected.",
+                checked = killSwitch,
+                onCheckedChange = { onToggleKill() }
+            )
+        }
+    }
+}
+
+@Composable
+fun SponsoredAdScreen(onClose: () -> Unit) {
+    PhoneFrame {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF081B2E),
-                            Color(0xFF0C2039),
-                            Color(0xFF071422)
+                    brush = Brush.linearGradient(
+                        listOf(
+                            Color(0xFF3B1E42),
+                            Color(0xFF1B2D4B),
+                            Color(0xFF4F6C89)
                         )
                     )
                 )
+                .padding(14.dp)
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 22.dp, vertical = 28.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clickable { onClose() }
                     )
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Language,
-                            contentDescription = null,
-                            tint = Color(0xFF8BB6FF),
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.size(8.dp))
-                        Text(
-                            text = "EN / FA",
-                            color = Color(0xFFB8D8FF),
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
                 }
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Card(
-                        shape = RoundedCornerShape(26.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF0F2A46).copy(alpha = 0.88f)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 18.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Shield,
-                                contentDescription = null,
-                                tint = Color(0xFF83D6FF),
-                                modifier = Modifier.size(42.dp)
+                Spacer(modifier = Modifier.height(18.dp))
+                Box(
+                    modifier = Modifier
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0xFF3F2E1A),
+                                    Color(0xFF2C4E68),
+                                    Color(0xFF071820)
+                                )
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = statusLabel,
-                                color = Color.White,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = stringResource(R.string.connection_status_hint),
-                                color = Color(0xFFBFCFE9),
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(top = 6.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Button(
-                        onClick = { isConnected = !isConnected },
-                        shape = RoundedCornerShape(30.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isConnected) Color(0xFFDB4C4C) else Color(0xFF4DB6FF)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(92.dp)
-                    ) {
-                        Text(
-                            text = if (isConnected) stringResource(R.string.disconnect) else stringResource(R.string.connect),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
                         )
-                    }
-                }
-
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF102B44).copy(alpha = 0.9f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
+                        .fillMaxWidth()
+                        .height(390.dp)
+                        .padding(8.dp),
+                    contentAlignment = Alignment.BottomCenter
                 ) {
+                    MountainBackdrop()
                     Column(
-                        modifier = Modifier.padding(18.dp)
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(bottom = 24.dp)
                     ) {
                         Text(
-                            text = stringResource(R.string.server_list),
-                            style = MaterialTheme.typography.titleMedium,
+                            text = "Explore the World",
                             color = Color.White,
-                            fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 40.sp
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "NOVA • Turkiye • Auto",
-                            color = Color(0xFFD9E8FF),
-                            style = MaterialTheme.typography.bodyLarge
+                            text = "Without Limits",
+                            color = Color.White,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 40.sp
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(18.dp))
                         Text(
-                            text = stringResource(R.string.server_hint),
-                            color = Color(0xFF9DB9D9),
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "Get the best deals, travel more, and enjoy your freedom.",
+                            color = Color(0xFFE3EAFB),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(horizontal = 28.dp)
                         )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Button(
+                            onClick = onClose,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 18.dp)
+                                .height(54.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4AA7FF))
+                        ) {
+                            Text("Learn More", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
         }
     }
 }
+
+@Composable
+fun PhoneFrame(content: @Composable () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(720.dp)
+            .shadow(18.dp, RoundedCornerShape(36.dp)),
+        shape = RoundedCornerShape(36.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF071B2D)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1D3D5F))
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun SearchField() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF0D2A45).copy(alpha = 0.6f))
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = null,
+                tint = Color(0xFF9FB8D8),
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.size(8.dp))
+            Text(
+                text = "Search country...",
+                color = Color(0xFF9DB7D6),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+}
+
+@Composable
+fun LocationRow(item: LocationItem) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color(0xFF0D2440))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = item.flag, fontSize = 24.sp)
+            Spacer(modifier = Modifier.size(12.dp))
+            Column {
+                Text(item.country, color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text(item.city, color = Color(0xFF9BB5D9), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.SignalCellularAlt,
+                contentDescription = null,
+                tint = Color(0xFF82D1FF),
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.size(6.dp))
+            Text(item.ping, color = Color(0xFFBFD8FF), style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+fun SettingsCard(title: String, subtitle: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFF0F2740))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(title, color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, color = Color(0xFFB3C9EA), style = MaterialTheme.typography.bodyMedium)
+            }
+            Icon(
+                imageVector = Icons.Default.ArrowBack,
+                contentDescription = null,
+                tint = Color(0xFF8CC9FF),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun SettingsToggleCard(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFF0F2740))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, color = Color.White, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = Color(0xFFB3C9EA), style = MaterialTheme.typography.bodyMedium)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = { onCheckedChange() },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color(0xFF4EB6FF),
+                checkedTrackColor = Color(0xFF7FCBFF),
+                uncheckedThumbColor = Color(0xFFB0CADF),
+                uncheckedTrackColor = Color(0xFF203754)
+            )
+        )
+    }
+}
+
+@Composable
+fun SupportRow(label: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, color = Color.White, fontWeight = FontWeight.Medium)
+        Icon(
+            imageVector = Icons.Default.ArrowBack,
+            contentDescription = null,
+            tint = Color(0xFF8CC9FF),
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
+fun ThemeOption(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                if (selected) Color(0xFF1B3350) else Color(0xFF0D2440)
+            )
+            .border(
+                1.dp,
+                if (selected) Color(0xFF56C7FF) else Color(0xFF1E3A5A),
+                RoundedCornerShape(20.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(title, color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, color = Color(0xFFB5CAE3), style = MaterialTheme.typography.bodyMedium)
+            }
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color(0xFF7AD0FF)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GhostTextButton(text: String, onClick: () -> Unit) {
+    Text(
+        text = text,
+        color = Color(0xFFB5D8FF),
+        modifier = Modifier.clickable { onClick() },
+        style = MaterialTheme.typography.labelLarge
+    )
+}
+
+@Composable
+fun PillButton(text: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) Color(0xFF0C2A45) else Color(0xFF0A2035))
+            .border(1.dp, Color(0xFF3176B7), RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = null,
+                tint = Color(0xFF7DD7FF),
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.size(6.dp))
+            Text(text, color = Color.White, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+fun LocationChip(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF0D2740))
+            .border(1.dp, Color(0xFF2D5F8C), RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.Language,
+                contentDescription = null,
+                tint = Color(0xFF7ED4FF),
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.size(6.dp))
+            Text("Select Location", color = Color.White, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+fun SmallStatusDot() {
+    Box(
+        modifier = Modifier
+            .size(10.dp)
+            .background(Color(0xFF5DE1FF), CircleShape)
+            .border(1.dp, Color.White.copy(alpha = 0.6f), CircleShape)
+    )
+}
+
+@Composable
+fun LogoMarkSmall() {
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .background(
+                brush = Brush.linearGradient(listOf(Color(0xFF4CC9FF), Color(0xFF7A4BFF))),
+                shape = RoundedCornerShape(8.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("N", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+    }
+}
+
+@Composable
+fun NeonConnectButton(connected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(220.dp)
+            .background(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF53C8FF),
+                        Color(0xFF3F99FF),
+                        Color(0xFF0E1F34)
+                    )
+                ),
+                shape = CircleShape
+            )
+            .border(6.dp, Color(0xFF8BE3FF).copy(alpha = 0.8f), CircleShape)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(150.dp)
+                .background(
+                    brush = Brush.radialGradient(
+                        listOf(
+                            Color(0xFF0A2341),
+                            Color(0xFF143A62),
+                            Color(0xFF071C2D)
+                        )
+                    ),
+                    shape = CircleShape
+                )
+                .border(8.dp, Color(0xFF9EDBFF).copy(alpha = 0.85f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (connected) Icons.Default.Close else Icons.Default.Shield,
+                contentDescription = null,
+                tint = if (connected) Color(0xFFFF5C5C) else Color(0xFF92E5FF),
+                modifier = Modifier.size(72.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ShieldLogoSmall() {
+    Box(
+        modifier = Modifier
+            .size(180.dp)
+            .background(
+                brush = Brush.linearGradient(listOf(Color(0xFF6A5CF6), Color(0xFF4CC5FF))),
+                shape = RoundedCornerShape(30.dp)
+            )
+            .border(4.dp, Color(0xFF9EC9FF), RoundedCornerShape(30.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("N", color = Color.White, fontSize = 100.sp, fontWeight = FontWeight.Bold)
+            Text("VPN", color = Color.White, fontSize = 28.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun MountainBackdrop() {
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+            drawCircle(color = Color(0xFF7ED6FF).copy(alpha = 0.25f), radius = 200f, center = Offset(width * 0.5f, height * 0.2f))
+            drawPath(
+                path = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, height * 0.85f)
+                    lineTo(width * 0.18f, height * 0.66f)
+                    lineTo(width * 0.33f, height * 0.82f)
+                    lineTo(width * 0.52f, height * 0.56f)
+                    lineTo(width * 0.72f, height * 0.86f)
+                    lineTo(width * 0.88f, height * 0.62f)
+                    lineTo(width, height * 0.85f)
+                    lineTo(width, height)
+                    lineTo(0f, height)
+                    close()
+                },
+                color = Color(0xFF0B2738).copy(alpha = 0.85f)
+            )
+        }
+    }
+}
+
+private data class LocationItem(
+    val country: String,
+    val city: String,
+    val ping: String,
+    val flag: String
+)
+
