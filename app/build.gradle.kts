@@ -21,16 +21,16 @@ if (secretPropertiesFile.exists()) {
 val storeFilePath = localProperties.getProperty("RELEASE_STORE_FILE")
     ?: secretProperties.getProperty("RELEASE_STORE_FILE")
     ?: ""
-val storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD")
+val releaseStorePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD")
     ?: secretProperties.getProperty("RELEASE_STORE_PASSWORD")
     ?: ""
-val keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
+val releaseKeyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
     ?: secretProperties.getProperty("RELEASE_KEY_ALIAS")
     ?: ""
-val keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
+val releaseKeyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
     ?: secretProperties.getProperty("RELEASE_KEY_PASSWORD")
     ?: ""
-val hasSigningInfo = storeFilePath.isNotBlank() && storePassword.isNotBlank() && keyAlias.isNotBlank() && keyPassword.isNotBlank()
+val hasSigningInfo = storeFilePath.isNotBlank() && releaseStorePassword.isNotBlank() && releaseKeyAlias.isNotBlank() && releaseKeyPassword.isNotBlank()
 
 android {
     namespace = "com.app.novavpn"
@@ -53,9 +53,9 @@ android {
         signingConfigs {
             create("release") {
                 storeFile = rootProject.file(storeFilePath)
-                storePassword = storePassword
-                keyAlias = keyAlias
-                keyPassword = keyPassword
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
         }
     }
@@ -106,6 +106,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.compose.material:material-icons-extended")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
