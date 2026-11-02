@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">NOVA VPN</string>
+    <string name="connect">اتصال</string>
+    <string name="disconnect">قطع اتصال</string>
+    <string name="connected">متصل</string>
+    <string name="disconnected">قطع شده</string>
+    <string name="connection_status_hint">آماده برای ایجاد تونل امن</string>
+    <string name="server_list">سرور</string>
+    <string name="server_hint">یک منطقه معتبر را برای شروع انتخاب کنید</string>
+    <string name="vpn_service_name">NOVA VPN</string>
+    <string name="vpn_service_ready">سرویس VPN آماده است</string>
+</resources>
