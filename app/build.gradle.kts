@@ -34,15 +34,15 @@ val keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
 val hasSigningInfo = storeFilePath.isNotBlank() && storePassword.isNotBlank() && keyAlias.isNotBlank() && keyPassword.isNotBlank()
 
 android {
-    namespace = "com.novavpn.app"
+    namespace = "com.app.novavpn"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.novavpn.app"
+        applicationId = "com.app.novavpn"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 30071366
+        versionName = "4.6.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
