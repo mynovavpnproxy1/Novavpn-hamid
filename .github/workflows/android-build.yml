@@ -47,7 +47,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # sdkmanager exits successfully after accepting licenses; the
+          # upstream 'yes' process may receive SIGPIPE when sdkmanager closes
+          # stdin, so do not let pipefail misreport that as a step failure.
+          set +o pipefail
           yes | sdkmanager --licenses
+          set -o pipefail
           sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
