@@ -1,0 +1,56 @@
+package com.novavpn.app.vpn
+
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.core.content.ContextCompat
+import com.novavpn.app.config.ConnectionStateManager
+import com.novavpn.app.config.SavedServerProfile
+
+class VpnConnectionController(
+    private val activity: Activity,
+    private val connectionStateManager: ConnectionStateManager
+) {
+    fun startSelectedConnection(): Boolean {
+        val selected = connectionStateManager.getSelectedServer() ?: return false
+        val prepared = VpnPermissionHelper(activity).prepareVpn()
+        if (!prepared) {
+            return false
+        }
+
+        val intent = Intent(activity, NovaVpnService::class.java).apply {
+            action = NovaVpnService.ACTION_START
+            putExtra("selected_server_id", selected.id)
+            putExtra("selected_server_name", selected.name ?: selected.host)
+            putExtra("selected_server_type", selected.type)
+            putExtra("selected_server_host", selected.host)
+            putExtra("selected_server_port", selected.port)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(activity, intent)
+        } else {
+            activity.startService(intent)
+        }
+
+        connectionStateManager.setConnected(true)
+        return true
+    }
+
+    fun stopConnection() {
+        val intent = Intent(activity, NovaVpnService::class.java).apply {
+            action = NovaVpnService.ACTION_STOP
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(activity, intent)
+        } else {
+            activity.startService(intent)
+        }
+
+        connectionStateManager.setConnected(false)
+    }
+
+    fun selectedServerLabel(): String = connectionStateManager.getSelectedServerLabel()
+}
