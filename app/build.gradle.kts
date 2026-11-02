@@ -53,9 +53,9 @@ android {
         signingConfigs {
             create("release") {
                 storeFile = rootProject.file(storeFilePath)
-                storePassword = this@build.gradle.kts.storePassword
-                keyAlias = this@build.gradle.kts.keyAlias
-                keyPassword = this@build.gradle.kts.keyPassword
+                storePassword = storePassword
+                keyAlias = keyAlias
+                keyPassword = keyPassword
             }
         }
     }
