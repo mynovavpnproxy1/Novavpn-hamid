@@ -58,6 +58,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.novavpn.app.config.ImportConfigScreen
+import com.novavpn.app.config.SavedServerProfile
+import com.novavpn.app.config.ServerListScreen
 import com.novavpn.app.ui.theme.NovaVPNTheme
 import kotlinx.coroutines.delay
 
@@ -80,6 +82,7 @@ enum class AppScreen {
     THEME,
     AUTO_CONNECT,
     IMPORT_CONFIG,
+    SERVER_LIST,
     AD
 }
 
@@ -162,6 +165,7 @@ fun NovaVpnApp() {
             onToggleAuto = { autoConnect = !autoConnect },
             onToggleKill = { killSwitch = !killSwitch },
             onOpenImportConfig = { currentScreen = AppScreen.IMPORT_CONFIG },
+            onOpenServerList = { currentScreen = AppScreen.SERVER_LIST },
             onOpenSupport = {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(ADSTERRA_SUPPORT_URL))
                 context.startActivity(intent)
@@ -186,6 +190,14 @@ fun NovaVpnApp() {
         )
 
         AppScreen.IMPORT_CONFIG -> ImportConfigScreen(onBack = { currentScreen = AppScreen.SETTINGS })
+
+        AppScreen.SERVER_LIST -> ServerListScreen(
+            onBack = { currentScreen = AppScreen.SETTINGS },
+            onServerSelected = { selected ->
+                connected = true
+                currentScreen = AppScreen.HOME
+            }
+        )
 
         AppScreen.AD -> SponsoredAdScreen(
             countdownSeconds = adCountdown,
@@ -328,6 +340,7 @@ fun SettingsScreen(
     onToggleAuto: () -> Unit,
     onToggleKill: () -> Unit,
     onOpenImportConfig: () -> Unit,
+    onOpenServerList: () -> Unit,
     onOpenSupport: () -> Unit
 ) {
     PhoneFrame {
@@ -389,6 +402,8 @@ fun SettingsScreen(
                     .padding(14.dp)
             ) {
                 SupportRow(label = "Import Config", onClick = onOpenImportConfig)
+                HorizontalDivider(color = Color(0xFF1A3A59), thickness = 1.dp)
+                SupportRow(label = "Saved Servers", onClick = onOpenServerList)
                 HorizontalDivider(color = Color(0xFF1A3A59), thickness = 1.dp)
                 SupportRow(label = "Support", onClick = onOpenSupport)
                 HorizontalDivider(color = Color(0xFF1A3A59), thickness = 1.dp)
