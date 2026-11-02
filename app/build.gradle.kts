@@ -1,8 +1,37 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
+val secretProperties = Properties()
+val secretPropertiesFile = rootProject.file(".secrets/release-signing.properties")
+if (secretPropertiesFile.exists()) {
+    secretProperties.load(FileInputStream(secretPropertiesFile))
+}
+
+val storeFilePath = localProperties.getProperty("RELEASE_STORE_FILE")
+    ?: secretProperties.getProperty("RELEASE_STORE_FILE")
+    ?: ""
+val storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD")
+    ?: secretProperties.getProperty("RELEASE_STORE_PASSWORD")
+    ?: ""
+val keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
+    ?: secretProperties.getProperty("RELEASE_KEY_ALIAS")
+    ?: ""
+val keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
+    ?: secretProperties.getProperty("RELEASE_KEY_PASSWORD")
+    ?: ""
+val hasSigningInfo = storeFilePath.isNotBlank() && storePassword.isNotBlank() && keyAlias.isNotBlank() && keyPassword.isNotBlank()
 
 android {
     namespace = "com.novavpn.app"
@@ -21,9 +50,23 @@ android {
         }
     }
 
+    if (hasSigningInfo) {
+        signingConfigs {
+            create("release") {
+                storeFile = rootProject.file(storeFilePath)
+                storePassword = this@build.gradle.kts.storePassword
+                keyAlias = this@build.gradle.kts.keyAlias
+                keyPassword = this@build.gradle.kts.keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (hasSigningInfo) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
