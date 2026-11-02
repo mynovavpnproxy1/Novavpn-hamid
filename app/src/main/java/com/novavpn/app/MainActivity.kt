@@ -44,6 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -57,10 +58,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.novavpn.app.config.ConfigRepository
+import com.novavpn.app.config.ConnectionStateManager
 import com.novavpn.app.config.ImportConfigScreen
-import com.novavpn.app.config.SavedServerProfile
 import com.novavpn.app.config.ServerListScreen
 import com.novavpn.app.ui.theme.NovaVPNTheme
+import com.novavpn.app.vpn.VpnConnectionController
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -90,15 +93,20 @@ private const val ADSTERRA_SUPPORT_URL = "https://asiafilm.org/4/0a72bc9d378be74
 
 @Composable
 fun NovaVpnApp() {
+    val context = LocalContext.current
+    val connectionManager = remember { ConnectionStateManager(context) }
+    val configRepository = remember { ConfigRepository(context) }
+    val vpnController = remember { VpnConnectionController(context as android.app.Activity, connectionManager) }
+
     var currentScreen by rememberSaveable { mutableStateOf(AppScreen.HOME) }
-    var connected by rememberSaveable { mutableStateOf(false) }
+    var connected by rememberSaveable { mutableStateOf(connectionManager.isConnected()) }
+    var selectedServerLabel by rememberSaveable { mutableStateOf(connectionManager.getSelectedServerLabel()) }
     var themeMode by rememberSaveable { mutableStateOf("Dark") }
     var autoConnect by rememberSaveable { mutableStateOf(false) }
     var killSwitch by rememberSaveable { mutableStateOf(true) }
     var adGateOpen by rememberSaveable { mutableStateOf(false) }
     var adCountdown by rememberSaveable { mutableStateOf(5) }
     var adCanClose by rememberSaveable { mutableStateOf(false) }
-    val context = LocalContext.current
 
     LaunchedEffect(adGateOpen) {
         if (!adGateOpen) {
@@ -118,14 +126,21 @@ fun NovaVpnApp() {
         }
     }
 
+    LaunchedEffect(connectionManager.isConnected()) {
+        connected = connectionManager.isConnected()
+        selectedServerLabel = connectionManager.getSelectedServerLabel()
+    }
+
     if (adGateOpen) {
         SponsoredAdScreen(
             countdownSeconds = adCountdown,
             canClose = adCanClose,
             onClose = {
-                adGateOpen = false
-                connected = true
-                currentScreen = AppScreen.HOME
+                if (selectedServerLabel != "No server selected") {
+                    adGateOpen = false
+                    connected = vpnController.startSelectedConnection()
+                    currentScreen = AppScreen.HOME
+                }
             },
             onOpenSupport = {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(ADSTERRA_SUPPORT_URL))
@@ -138,12 +153,18 @@ fun NovaVpnApp() {
     when (currentScreen) {
         AppScreen.HOME -> HomeScreen(
             connected = connected,
+            selectedServerLabel = selectedServerLabel,
             onConnectToggle = {
                 if (!connected && !adGateOpen) {
+                    if (selectedServerLabel == "No server selected") {
+                        currentScreen = AppScreen.SERVER_LIST
+                        return@HomeScreen
+                    }
                     adGateOpen = true
                     adCountdown = 5
                     adCanClose = false
                 } else if (connected) {
+                    vpnController.stopConnection()
                     connected = false
                 }
             },
@@ -194,7 +215,9 @@ fun NovaVpnApp() {
         AppScreen.SERVER_LIST -> ServerListScreen(
             onBack = { currentScreen = AppScreen.SETTINGS },
             onServerSelected = { selected ->
-                connected = true
+                connectionManager.saveSelectedServer(selected)
+                selectedServerLabel = selected.name ?: selected.host
+                connected = false
                 currentScreen = AppScreen.HOME
             }
         )
@@ -203,11 +226,13 @@ fun NovaVpnApp() {
             countdownSeconds = adCountdown,
             canClose = adCanClose,
             onClose = {
+                if (selectedServerLabel != "No server selected") {
+                    connected = vpnController.startSelectedConnection()
+                }
                 currentScreen = AppScreen.HOME
                 adGateOpen = false
                 adCountdown = 5
                 adCanClose = false
-                connected = true
             },
             onOpenSupport = {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(ADSTERRA_SUPPORT_URL))
@@ -220,6 +245,7 @@ fun NovaVpnApp() {
 @Composable
 fun HomeScreen(
     connected: Boolean,
+    selectedServerLabel: String,
     onConnectToggle: () -> Unit,
     onOpenLocation: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -288,32 +314,41 @@ fun HomeScreen(
                     .padding(bottom = 10.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFF0D2A45).copy(alpha = 0.75f))
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = null,
-                        tint = Color(0xFF86D8FF),
-                        modifier = Modifier.size(20.dp)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = if (selectedServerLabel == "No server selected") "Select a server first" else "Selected: $selectedServerLabel",
+                        color = Color(0xFFB5D8FF),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.size(8.dp))
-                    Column {
-                        Text(
-                            text = "Your privacy is our priority",
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0xFF0D2A45).copy(alpha = 0.75f))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = Color(0xFF86D8FF),
+                            modifier = Modifier.size(20.dp)
                         )
-                        Text(
-                            text = "Secure • Fast • Reliable",
-                            color = Color(0xFFB3C7E9),
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Column {
+                            Text(
+                                text = "Your privacy is our priority",
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Secure • Fast • Reliable",
+                                color = Color(0xFFB3C7E9),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     }
                 }
             }
