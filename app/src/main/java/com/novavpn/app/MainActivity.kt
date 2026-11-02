@@ -1,5 +1,7 @@
 package com.novavpn.app
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,7 +27,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MiscellaneousServices
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.SignalCellularAlt
@@ -33,18 +34,16 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,13 +53,12 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.novavpn.app.ui.theme.NovaVPNTheme
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,6 +81,8 @@ enum class AppScreen {
     AD
 }
 
+private const val ADSTERRA_SUPPORT_URL = "https://asiafilm.org/4/0a72bc9d378be74f04a1ec6cc70cc6e7"
+
 @Composable
 fun NovaVpnApp() {
     var currentScreen by rememberSaveable { mutableStateOf(AppScreen.HOME) }
@@ -90,68 +90,113 @@ fun NovaVpnApp() {
     var themeMode by rememberSaveable { mutableStateOf("Dark") }
     var autoConnect by rememberSaveable { mutableStateOf(false) }
     var killSwitch by rememberSaveable { mutableStateOf(true) }
+    var adGateOpen by rememberSaveable { mutableStateOf(false) }
+    var adCountdown by rememberSaveable { mutableStateOf(5) }
+    var adCanClose by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF020D19),
-                        Color(0xFF071E33),
-                        Color(0xFF0B2642)
-                    )
-                )
-            )
-            .padding(18.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        when (currentScreen) {
-            AppScreen.HOME -> HomeScreen(
-                connected = connected,
-                onConnectToggle = { connected = !connected },
-                onOpenLocation = { currentScreen = AppScreen.LOCATION },
-                onOpenSettings = { currentScreen = AppScreen.SETTINGS },
-                onOpenTheme = { currentScreen = AppScreen.THEME },
-                onOpenAutoConnect = { currentScreen = AppScreen.AUTO_CONNECT },
-                onOpenAd = { currentScreen = AppScreen.AD }
-            )
-
-            AppScreen.LOCATION -> LocationScreen(
-                onBack = { currentScreen = AppScreen.HOME }
-            )
-
-            AppScreen.SETTINGS -> SettingsScreen(
-                onBack = { currentScreen = AppScreen.HOME },
-                themeMode = themeMode,
-                onTheme = { currentScreen = AppScreen.THEME },
-                autoConnect = autoConnect,
-                killSwitch = killSwitch,
-                onToggleAuto = { autoConnect = !autoConnect },
-                onToggleKill = { killSwitch = !killSwitch }
-            )
-
-            AppScreen.THEME -> ThemeScreen(
-                onBack = { currentScreen = AppScreen.SETTINGS },
-                selected = themeMode,
-                onSelect = {
-                    themeMode = it
-                    currentScreen = AppScreen.SETTINGS
-                }
-            )
-
-            AppScreen.AUTO_CONNECT -> AutoConnectScreen(
-                onBack = { currentScreen = AppScreen.SETTINGS },
-                autoConnect = autoConnect,
-                killSwitch = killSwitch,
-                onToggleAuto = { autoConnect = !autoConnect },
-                onToggleKill = { killSwitch = !killSwitch }
-            )
-
-            AppScreen.AD -> SponsoredAdScreen(
-                onClose = { currentScreen = AppScreen.HOME }
-            )
+    LaunchedEffect(adGateOpen) {
+        if (!adGateOpen) {
+            adCountdown = 5
+            adCanClose = false
+            return@LaunchedEffect
         }
+
+        adCountdown = 5
+        adCanClose = false
+        while (adCountdown > 0 && adGateOpen) {
+            delay(1000)
+            adCountdown -= 1
+        }
+        if (adGateOpen) {
+            adCanClose = true
+        }
+    }
+
+    if (adGateOpen) {
+        SponsoredAdScreen(
+            countdownSeconds = adCountdown,
+            canClose = adCanClose,
+            onClose = {
+                adGateOpen = false
+                connected = true
+                currentScreen = AppScreen.HOME
+            },
+            onOpenSupport = {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(ADSTERRA_SUPPORT_URL))
+                context.startActivity(intent)
+            }
+        )
+        return
+    }
+
+    when (currentScreen) {
+        AppScreen.HOME -> HomeScreen(
+            connected = connected,
+            onConnectToggle = {
+                if (!connected && !adGateOpen) {
+                    adGateOpen = true
+                    adCountdown = 5
+                    adCanClose = false
+                } else if (connected) {
+                    connected = false
+                }
+            },
+            onOpenLocation = { currentScreen = AppScreen.LOCATION },
+            onOpenSettings = { currentScreen = AppScreen.SETTINGS },
+            onOpenTheme = { currentScreen = AppScreen.THEME },
+            onOpenAutoConnect = { currentScreen = AppScreen.AUTO_CONNECT },
+            onOpenAd = { currentScreen = AppScreen.AD }
+        )
+
+        AppScreen.LOCATION -> LocationScreen(onBack = { currentScreen = AppScreen.HOME })
+
+        AppScreen.SETTINGS -> SettingsScreen(
+            onBack = { currentScreen = AppScreen.HOME },
+            themeMode = themeMode,
+            onTheme = { currentScreen = AppScreen.THEME },
+            autoConnect = autoConnect,
+            killSwitch = killSwitch,
+            onToggleAuto = { autoConnect = !autoConnect },
+            onToggleKill = { killSwitch = !killSwitch },
+            onOpenSupport = {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(ADSTERRA_SUPPORT_URL))
+                context.startActivity(intent)
+            }
+        )
+
+        AppScreen.THEME -> ThemeScreen(
+            onBack = { currentScreen = AppScreen.SETTINGS },
+            selected = themeMode,
+            onSelect = {
+                themeMode = it
+                currentScreen = AppScreen.SETTINGS
+            }
+        )
+
+        AppScreen.AUTO_CONNECT -> AutoConnectScreen(
+            onBack = { currentScreen = AppScreen.SETTINGS },
+            autoConnect = autoConnect,
+            killSwitch = killSwitch,
+            onToggleAuto = { autoConnect = !autoConnect },
+            onToggleKill = { killSwitch = !killSwitch }
+        )
+
+        AppScreen.AD -> SponsoredAdScreen(
+            countdownSeconds = adCountdown,
+            canClose = adCanClose,
+            onClose = {
+                currentScreen = AppScreen.HOME
+                adGateOpen = false
+                adCountdown = 5
+                adCanClose = false
+                connected = true
+            },
+            onOpenSupport = {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(ADSTERRA_SUPPORT_URL))
+                context.startActivity(intent)
+            }
+        )
     }
 }
 
@@ -269,64 +314,6 @@ fun HomeScreen(
 }
 
 @Composable
-fun LocationScreen(onBack: () -> Unit) {
-    PhoneFrame {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFF081A2C))
-                .padding(18.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clickable { onBack() }
-                )
-                Spacer(modifier = Modifier.size(12.dp))
-                Text(
-                    text = "Select Location",
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            SearchField()
-            Spacer(modifier = Modifier.height(14.dp))
-
-            val locations = listOf(
-                LocationItem("United Kingdom", "London", "45 ms", "🇬🇧"),
-                LocationItem("Germany", "Frankfurt", "62 ms", "🇩🇪"),
-                LocationItem("United States", "New York", "68 ms", "🇺🇸"),
-                LocationItem("Canada", "Toronto", "72 ms", "🇨🇦"),
-                LocationItem("France", "Paris", "78 ms", "🇫🇷"),
-                LocationItem("Netherlands", "Amsterdam", "81 ms", "🇳🇱"),
-                LocationItem("Australia", "Sydney", "95 ms", "🇦🇺"),
-                LocationItem("Japan", "Tokyo", "102 ms", "🇯🇵"),
-                LocationItem("Singapore", "Singapore", "110 ms", "🇸🇬"),
-                LocationItem("Sweden", "Stockholm", "118 ms", "🇸🇪"),
-                LocationItem("Switzerland", "Zurich", "124 ms", "🇨🇭"),
-                LocationItem("Turkey", "Istanbul", "132 ms", "🇹🇷")
-            )
-
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                locations.forEach { item ->
-                    LocationRow(item)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     themeMode: String,
@@ -334,7 +321,8 @@ fun SettingsScreen(
     autoConnect: Boolean,
     killSwitch: Boolean,
     onToggleAuto: () -> Unit,
-    onToggleKill: () -> Unit
+    onToggleKill: () -> Unit,
+    onOpenSupport: () -> Unit
 ) {
     PhoneFrame {
         Column(
@@ -394,11 +382,11 @@ fun SettingsScreen(
                     .background(Color(0xFF0F2740))
                     .padding(14.dp)
             ) {
-                SupportRow(label = "Share App")
+                SupportRow(label = "Support", onClick = onOpenSupport)
                 HorizontalDivider(color = Color(0xFF1A3A59), thickness = 1.dp)
-                SupportRow(label = "Privacy Policy")
+                SupportRow(label = "Share App", onClick = onOpenSupport)
                 HorizontalDivider(color = Color(0xFF1A3A59), thickness = 1.dp)
-                SupportRow(label = "Support")
+                SupportRow(label = "Privacy Policy", onClick = onOpenSupport)
             }
         }
     }
@@ -512,11 +500,24 @@ fun AutoConnectScreen(
 }
 
 @Composable
-fun SponsoredAdScreen(onClose: () -> Unit) {
-    PhoneFrame {
+fun SponsoredAdScreen(
+    countdownSeconds: Int,
+    canClose: Boolean,
+    onClose: () -> Unit,
+    onOpenSupport: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF020D19))
+            .padding(18.dp),
+        contentAlignment = Alignment.Center
+    ) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .height(700.dp)
+                .shadow(18.dp, RoundedCornerShape(35.dp))
                 .background(
                     brush = Brush.linearGradient(
                         listOf(
@@ -524,31 +525,50 @@ fun SponsoredAdScreen(onClose: () -> Unit) {
                             Color(0xFF1B2D4B),
                             Color(0xFF4F6C89)
                         )
-                    )
+                    ),
+                    shape = RoundedCornerShape(35.dp)
                 )
-                .padding(14.dp)
+                .padding(18.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Top,
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = null,
-                        tint = Color.White,
+                    Box(
                         modifier = Modifier
-                            .size(30.dp)
-                            .clickable { onClose() }
-                    )
+                            .size(34.dp)
+                            .background(Color(0xFF0B2237).copy(alpha = 0.7f), CircleShape)
+                            .clickable(enabled = canClose) { onClose() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            tint = if (canClose) Color.White else Color.White.copy(alpha = 0.35f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = if (canClose) "Skip ad" else "Skip in ${countdownSeconds}s",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
                 Spacer(modifier = Modifier.height(18.dp))
                 Box(
                     modifier = Modifier
+                        .fillMaxWidth()
+                        .height(360.dp)
+                        .clip(RoundedCornerShape(26.dp))
                         .background(
                             Brush.verticalGradient(
                                 listOf(
@@ -557,16 +577,13 @@ fun SponsoredAdScreen(onClose: () -> Unit) {
                                     Color(0xFF071820)
                                 )
                             )
-                        )
-                        .fillMaxWidth()
-                        .height(390.dp)
-                        .padding(8.dp),
+                        ),
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     MountainBackdrop()
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(bottom = 24.dp)
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
                             text = "Explore the World",
@@ -587,14 +604,13 @@ fun SponsoredAdScreen(onClose: () -> Unit) {
                             text = "Get the best deals, travel more, and enjoy your freedom.",
                             color = Color(0xFFE3EAFB),
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(horizontal = 28.dp)
+                            modifier = Modifier.padding(horizontal = 24.dp)
                         )
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(22.dp))
                         Button(
-                            onClick = onClose,
+                            onClick = onOpenSupport,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 18.dp)
                                 .height(54.dp),
                             shape = RoundedCornerShape(18.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4AA7FF))
@@ -746,11 +762,12 @@ fun SettingsToggleCard(
 }
 
 @Composable
-fun SupportRow(label: String) {
+fun SupportRow(label: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -948,9 +965,7 @@ fun ShieldLogoSmall() {
 
 @Composable
 fun MountainBackdrop() {
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
             val width = size.width
             val height = size.height
@@ -980,4 +995,3 @@ private data class LocationItem(
     val ping: String,
     val flag: String
 )
-
