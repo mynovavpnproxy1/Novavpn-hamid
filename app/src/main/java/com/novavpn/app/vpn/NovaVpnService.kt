@@ -9,7 +9,6 @@ import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.app.novavpn.R
 
 class NovaVpnService : android.net.VpnService() {
     companion object {
@@ -90,7 +89,7 @@ class NovaVpnService : android.net.VpnService() {
 
     private fun buildForegroundNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.app_name))
+            .setContentTitle("NovaVPN")
             .setContentText("Connected: $serverName • $serverHost:$serverPort")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -102,7 +101,7 @@ class NovaVpnService : android.net.VpnService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                getString(R.string.vpn_service_name),
+                "NovaVPN connection",
                 NotificationManager.IMPORTANCE_LOW
             )
             val manager = getSystemService(NotificationManager::class.java)
