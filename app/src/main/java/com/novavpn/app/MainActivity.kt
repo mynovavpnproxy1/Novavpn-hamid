@@ -228,7 +228,16 @@ fun NovaVpnApp() {
             onToggleKill = { killSwitch = !killSwitch }
         )
 
-        AppScreen.IMPORT_CONFIG -> ImportConfigScreen(onBack = { currentScreen = AppScreen.SETTINGS })
+        AppScreen.IMPORT_CONFIG -> ImportConfigScreen(
+            onBack = { currentScreen = AppScreen.SETTINGS },
+            onConfigImported = { config ->
+                val profile = configRepository.addFromConfig(config)
+                connectionManager.saveSelectedServer(profile)
+                selectedServerLabel = profile.name ?: profile.host
+                connected = false
+                currentScreen = AppScreen.HOME
+            }
+        )
 
         AppScreen.SERVER_LIST -> ServerListScreen(
             onBack = { currentScreen = AppScreen.SETTINGS },
