@@ -1,6 +1,7 @@
 package com.novavpn.app.config
 
 import android.util.Base64
+import android.net.Uri
 import org.json.JSONObject
 import java.net.URI
 import java.net.URLDecoder
@@ -74,54 +75,27 @@ class ServerConfigParser {
     }
 
     private fun parseVless(raw: String): ConfigParseResult {
-        // Parse authority separately: java.net.URI may return a null host for
-        // valid share links containing encoded user-info, IPv6, or unusual labels.
         return try {
-            val body = raw.substringAfter("vless://", "")
-            val main = body.substringBefore("#").substringBefore("?")
-            val at = main.lastIndexOf('@')
-            if (at <= 0 || at == main.lastIndex) {
-                return ConfigParseResult.Failure("VLESS link must contain user-id@host:port.")
-            }
-            val user = main.substring(0, at).let {
-                try { URLDecoder.decode(it.replace("+", "%2B"), "UTF-8") }
-                catch (_: Exception) { it }
-            }
-            val authority = main.substring(at + 1)
-            val host: String
-            val port: Int
-            if (authority.startsWith("[")) {
-                val close = authority.indexOf(']')
-                if (close < 0) return ConfigParseResult.Failure("VLESS IPv6 host is malformed.")
-                host = authority.substring(1, close)
-                port = authority.substring(close + 1).removePrefix(":").toIntOrNull()
-                    ?: return ConfigParseResult.Failure("VLESS port is missing or invalid.")
-            } else {
-                val colon = authority.lastIndexOf(':')
-                if (colon <= 0) return ConfigParseResult.Failure("VLESS host or port is missing.")
-                host = authority.substring(0, colon).trim()
-                port = authority.substring(colon + 1).toIntOrNull()
-                    ?: return ConfigParseResult.Failure("VLESS port is invalid.")
-            }
-            if (host.isBlank()) return ConfigParseResult.Failure("VLESS config is missing host.")
-            if (port !in 1..65535) return ConfigParseResult.Failure("VLESS port must be between 1 and 65535.")
-            val query = body.substringAfter("?", "").substringBefore("#")
-            val protocol = queryParam(query, "type") ?: "tcp"
-            val name = body.substringAfter("#", "").takeIf { it.isNotBlank() }?.let {
+            // Android Uri is tolerant of encoded labels and share-link query parameters.
+            val uri = Uri.parse(raw.trim())
+            val host = uri.host?.trim()?.takeIf { it.isNotEmpty() }
+                ?: return ConfigParseResult.Failure("VLESS link has no valid server host.")
+            val port = uri.port.takeIf { it in 1..65535 } ?: 443
+            val user = uri.userInfo?.takeIf { it.isNotBlank() }
+                ?: raw.substringAfter("vless://", "").substringBefore("@").takeIf { it.isNotBlank() }
+                ?: return ConfigParseResult.Failure("VLESS link has no UUID/user before @.")
+            val protocol = uri.getQueryParameter("type")?.takeIf { it.isNotBlank() } ?: "tcp"
+            val name = uri.encodedFragment?.let {
                 try { URLDecoder.decode(it, "UTF-8") } catch (_: Exception) { it }
-            } ?: "VLESS"
+            }?.takeIf { it.isNotBlank() } ?: "VLESS"
             ConfigParseResult.Success(
                 ServerConfig(
-                    type = "VLESS",
-                    host = host,
-                    port = port,
-                    username = user,
-                    protocol = protocol,
-                    name = name
+                    type = "VLESS", host = host, port = port, username = user,
+                    protocol = protocol, name = name
                 )
             )
         } catch (_: Exception) {
-            ConfigParseResult.Failure("VLESS config could not be parsed. Check the link format.")
+            ConfigParseResult.Failure("VLESS link format is invalid. Check vless://UUID@HOST:PORT.")
         }
     }
 
