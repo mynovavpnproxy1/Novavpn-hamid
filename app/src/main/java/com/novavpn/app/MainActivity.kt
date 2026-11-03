@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -107,6 +108,23 @@ fun NovaVpnApp() {
     var adGateOpen by rememberSaveable { mutableStateOf(false) }
     var adCountdown by rememberSaveable { mutableStateOf(5) }
     var adCanClose by rememberSaveable { mutableStateOf(false) }
+
+    // Handle Android system/gesture back inside the Compose navigation instead of
+    // letting the singleTask Activity close while a secondary screen is visible.
+    BackHandler(enabled = adGateOpen || currentScreen != AppScreen.HOME) {
+        if (adGateOpen) {
+            adGateOpen = false
+            adCountdown = 5
+            adCanClose = false
+        } else {
+            currentScreen = when (currentScreen) {
+                AppScreen.THEME, AppScreen.AUTO_CONNECT,
+                AppScreen.IMPORT_CONFIG, AppScreen.SERVER_LIST -> AppScreen.SETTINGS
+                AppScreen.SETTINGS, AppScreen.LOCATION, AppScreen.AD -> AppScreen.HOME
+                AppScreen.HOME -> AppScreen.HOME
+            }
+        }
+    }
 
     LaunchedEffect(adGateOpen) {
         if (!adGateOpen) {
