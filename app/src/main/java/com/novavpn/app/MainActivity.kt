@@ -231,7 +231,11 @@ fun NovaVpnApp() {
         AppScreen.IMPORT_CONFIG -> ImportConfigScreen(
             onBack = { currentScreen = AppScreen.SETTINGS },
             onConfigImported = { config ->
-                val profile = configRepository.addFromConfig(config)
+                // ImportConfigScreen already persisted the validated profile.
+                // Reuse that record instead of creating a duplicate.
+                val profile = configRepository.loadAll().lastOrNull {
+                    it.type == config.type && it.host == config.host && it.port == config.port
+                } ?: configRepository.addFromConfig(config)
                 connectionManager.saveSelectedServer(profile)
                 selectedServerLabel = profile.name ?: profile.host
                 connected = false
