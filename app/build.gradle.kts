@@ -33,7 +33,7 @@ val releaseKeyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
 val hasSigningInfo = storeFilePath.isNotBlank() && releaseStorePassword.isNotBlank() && releaseKeyAlias.isNotBlank() && releaseKeyPassword.isNotBlank()
 
 android {
-    namespace = "com.app.novavpn"
+    namespace = "com.novavpn.app"
     compileSdk = 35
 
     defaultConfig {

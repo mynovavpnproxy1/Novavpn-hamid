@@ -92,7 +92,7 @@ class NovaVpnService : android.net.VpnService() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText("Connected: $serverName • $serverHost:$serverPort")
-            .setSmallIcon(android.R.drawable.stat_sys_data_saver)
+            .setSmallIcon(R.drawable.ic_stat_nova_vpn)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
