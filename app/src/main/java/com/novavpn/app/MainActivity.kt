@@ -1053,3 +1053,41 @@ private data class LocationItem(
     val ping: String,
     val flag: String
 )
+
+
+@Composable
+private fun LocationScreen(onBack: () -> Unit) {
+    PhoneFrame {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF081A2C))
+                .padding(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp).clickable { onBack() }
+                )
+                Spacer(modifier = Modifier.size(12.dp))
+                Text(
+                    text = "Locations",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = "Choose a server from Saved Servers to connect.",
+                color = Color(0xFFB5D8FF),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+}
