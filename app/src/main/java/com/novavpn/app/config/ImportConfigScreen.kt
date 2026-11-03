@@ -40,6 +40,7 @@ fun ImportConfigScreen(
     onBack: () -> Unit,
     onConfigImported: (ServerConfig) -> Unit
 ) {
+    val context = LocalContext.current
     var configText by remember { mutableStateOf("") }
     var validation by remember { mutableStateOf<ConfigParseResult?>(null) }
 
@@ -97,7 +98,14 @@ fun ImportConfigScreen(
                     val result = ServerConfigParser().parse(configText)
                     validation = result
                     if (result is ConfigParseResult.Success) {
-                        onConfigImported(result.server)
+                        // Persist here before navigation so leaving this screen can never
+                        // discard a configuration that has just validated successfully.
+                        val stored = ConfigRepository(context).addFromConfig(result.server)
+                        onConfigImported(
+                            result.server.copy(
+                                name = stored.name ?: stored.host
+                            )
+                        )
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
