@@ -49,7 +49,7 @@ class ServerConfigParser {
     }
 
     private fun parseVmess(raw: String): ConfigParseResult {
-        val encoded = raw.removePrefix("vmess://", ignoreCase = true)
+        val encoded = raw.substring("vmess://".length)
         val decoded = decodeBase64Payload(encoded) ?: return ConfigParseResult.Failure("VMess config is not valid Base64.")
         return try {
             val json = JSONObject(decoded)
@@ -120,7 +120,7 @@ class ServerConfigParser {
     }
 
     private fun parseShadowsocks(raw: String): ConfigParseResult {
-        val withoutScheme = raw.removePrefix("ss://", ignoreCase = true)
+        val withoutScheme = raw.substring("ss://".length)
         val atIndex = withoutScheme.lastIndexOf('@')
         if (atIndex <= 0) {
             return ConfigParseResult.Failure("Shadowsocks config is malformed.")
