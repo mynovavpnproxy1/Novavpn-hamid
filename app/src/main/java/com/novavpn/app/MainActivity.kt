@@ -726,7 +726,7 @@ fun SearchField() {
 }
 
 @Composable
-fun LocationRow(item: LocationItem) {
+private fun LocationRow(item: LocationItem) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
