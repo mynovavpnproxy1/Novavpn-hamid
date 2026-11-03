@@ -74,13 +74,42 @@ class ServerConfigParser {
     }
 
     private fun parseVless(raw: String): ConfigParseResult {
+        // Parse authority separately: java.net.URI may return a null host for
+        // valid share links containing encoded user-info, IPv6, or unusual labels.
         return try {
-            val uri = URI(raw)
-            val host = uri.host ?: return ConfigParseResult.Failure("VLESS config is missing host.")
-            val port = if (uri.port > 0) uri.port else 443
-            val protocol = queryParam(uri.query, "type") ?: "tcp"
-            val user = uri.userInfo ?: "vless-user"
-            val name = uri.fragment ?: "VLESS"
+            val body = raw.substringAfter("vless://", "")
+            val main = body.substringBefore("#").substringBefore("?")
+            val at = main.lastIndexOf('@')
+            if (at <= 0 || at == main.lastIndex) {
+                return ConfigParseResult.Failure("VLESS link must contain user-id@host:port.")
+            }
+            val user = main.substring(0, at).let {
+                try { URLDecoder.decode(it.replace("+", "%2B"), "UTF-8") }
+                catch (_: Exception) { it }
+            }
+            val authority = main.substring(at + 1)
+            val host: String
+            val port: Int
+            if (authority.startsWith("[")) {
+                val close = authority.indexOf(']')
+                if (close < 0) return ConfigParseResult.Failure("VLESS IPv6 host is malformed.")
+                host = authority.substring(1, close)
+                port = authority.substring(close + 1).removePrefix(":").toIntOrNull()
+                    ?: return ConfigParseResult.Failure("VLESS port is missing or invalid.")
+            } else {
+                val colon = authority.lastIndexOf(':')
+                if (colon <= 0) return ConfigParseResult.Failure("VLESS host or port is missing.")
+                host = authority.substring(0, colon).trim()
+                port = authority.substring(colon + 1).toIntOrNull()
+                    ?: return ConfigParseResult.Failure("VLESS port is invalid.")
+            }
+            if (host.isBlank()) return ConfigParseResult.Failure("VLESS config is missing host.")
+            if (port !in 1..65535) return ConfigParseResult.Failure("VLESS port must be between 1 and 65535.")
+            val query = body.substringAfter("?", "").substringBefore("#")
+            val protocol = queryParam(query, "type") ?: "tcp"
+            val name = body.substringAfter("#", "").takeIf { it.isNotBlank() }?.let {
+                try { URLDecoder.decode(it, "UTF-8") } catch (_: Exception) { it }
+            } ?: "VLESS"
             ConfigParseResult.Success(
                 ServerConfig(
                     type = "VLESS",
@@ -92,7 +121,7 @@ class ServerConfigParser {
                 )
             )
         } catch (_: Exception) {
-            ConfigParseResult.Failure("VLESS config could not be parsed.")
+            ConfigParseResult.Failure("VLESS config could not be parsed. Check the link format.")
         }
     }
 
