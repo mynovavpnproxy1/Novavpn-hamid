@@ -37,7 +37,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ImportConfigScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onConfigImported: (ServerConfig) -> Unit
 ) {
     var configText by remember { mutableStateOf("") }
     var validation by remember { mutableStateOf<ConfigParseResult?>(null) }
@@ -93,12 +94,16 @@ fun ImportConfigScreen(
 
             Button(
                 onClick = {
-                    validation = ServerConfigParser().parse(configText)
+                    val result = ServerConfigParser().parse(configText)
+                    validation = result
+                    if (result is ConfigParseResult.Success) {
+                        onConfigImported(result.server)
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4AA7FF))
             ) {
-                Text("Validate & import")
+                Text("Save and select config")
             }
 
             when (val result = validation) {
