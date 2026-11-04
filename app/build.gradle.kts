@@ -2,6 +2,12 @@ import java.io.FileInputStream
 import java.util.Properties
 import java.net.URL
 
+
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
 val xrayAarFile = layout.buildDirectory.file("downloads/libv2ray.aar")
 val downloadXrayCore by tasks.registering {
     outputs.file(xrayAarFile)
@@ -24,11 +30,6 @@ tasks.named("preBuild").configure {
     dependsOn(downloadXrayCore)
 }
 
-
-plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-}
 
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
