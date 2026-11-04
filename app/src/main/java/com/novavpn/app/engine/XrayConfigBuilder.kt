@@ -48,7 +48,7 @@ object XrayConfigBuilder {
     }
 
     private fun buildVmess(raw: String): JSONObject {
-        val encoded = raw.removePrefix("vmess://").trim()
+        val encoded = raw.substringAfter("://").trim()
         val decoded = decodeBase64(encoded) ?: error("اطلاعات VMess قابل رمزگشایی نیست.")
         val source = JSONObject(decoded)
         val host = source.optString("add").takeIf { it.isNotBlank() } ?: error("آدرس VMess وجود ندارد.")
@@ -61,7 +61,9 @@ object XrayConfigBuilder {
         ))
         val network = source.optString("net", "tcp").ifBlank { "tcp" }
         val security = if (source.optString("tls") == "tls") "tls" else "none"
-        val query = Uri.parse("nova://import?type=${network}&security=${security}&sni=${Uri.encode(source.optString("sni", source.optString("host")))}&path=${Uri.encode(source.optString("path"))}&host=${Uri.encode(source.optString("host"))}")
+        val vmessHost = source.optString("host")
+        val vmessSni = source.optString("sni").ifBlank { vmessHost.ifBlank { host } }
+        val query = Uri.parse("nova://import?type=${network}&security=${security}&sni=${Uri.encode(vmessSni)}&path=${Uri.encode(source.optString("path"))}&host=${Uri.encode(vmessHost)}")
         return JSONObject().put("tag", "proxy").put("protocol", "vmess")
             .put("settings", settings).put("streamSettings", buildStreamSettings(query, network, security))
     }
@@ -97,16 +99,23 @@ object XrayConfigBuilder {
         val stream = JSONObject().put("network", network).put("security", security)
         when (security) {
             "tls" -> {
-                val tls = JSONObject().put("serverName", uri.getQueryParameter("sni") ?: uri.getQueryParameter("host").orEmpty())
-                    .put("allowInsecure", false)
+                val tlsServerName = uri.getQueryParameter("sni")
+                    ?.takeIf { it.isNotBlank() }
+                    ?: uri.getQueryParameter("host")?.takeIf { it.isNotBlank() }
+                    ?: uri.host.orEmpty()
+                val tls = JSONObject().put("serverName", tlsServerName).put("allowInsecure", false)
                 uri.getQueryParameter("fp")?.takeIf { it.isNotBlank() }?.let { tls.put("fingerprint", it) }
                 uri.getQueryParameter("alpn")?.takeIf { it.isNotBlank() }?.let { tls.put("alpn", JSONArray(it.split(",").map(String::trim))) }
                 stream.put("tlsSettings", tls)
             }
             "reality" -> {
-                val reality = JSONObject().put("serverName", uri.getQueryParameter("sni").orEmpty())
+                val realitySni = uri.getQueryParameter("sni")?.takeIf { it.isNotBlank() }
+                    ?: error("پارامتر SNI در کانفیگ REALITY وجود ندارد.")
+                val realityPublicKey = uri.getQueryParameter("pbk")?.takeIf { it.isNotBlank() }
+                    ?: error("کلید عمومی REALITY (pbk) وجود ندارد.")
+                val reality = JSONObject().put("serverName", realitySni)
                     .put("fingerprint", uri.getQueryParameter("fp") ?: "chrome")
-                    .put("publicKey", uri.getQueryParameter("pbk").orEmpty())
+                    .put("publicKey", realityPublicKey)
                     .put("shortId", uri.getQueryParameter("sid").orEmpty())
                     .put("spiderX", uri.getQueryParameter("spx") ?: "/")
                 stream.put("realitySettings", reality)
