@@ -207,8 +207,13 @@ fun NovaVpnApp() {
                         currentScreen = AppScreen.SERVER_LIST
                         return@HomeScreen
                     }
-                    vpnController.startSelectedConnection()
-                    connected = connectionManager.isConnected()
+                    val selected = connectionManager.getSelectedServer()
+                    if (selected?.rawConfig.isNullOrBlank()) {
+                        currentScreen = AppScreen.IMPORT_CONFIG
+                    } else {
+                        vpnController.startSelectedConnection()
+                        connected = connectionManager.isConnected()
+                    }
                 } else {
                     vpnController.stopConnection()
                     connected = false
@@ -274,10 +279,14 @@ fun NovaVpnApp() {
         AppScreen.SERVER_LIST -> ServerListScreen(
             onBack = { currentScreen = AppScreen.SETTINGS },
             onServerSelected = { selected ->
-                connectionManager.saveSelectedServer(selected)
-                selectedServerLabel = selected.name ?: selected.host
-                connected = false
-                currentScreen = AppScreen.HOME
+                if (selected.rawConfig.isNullOrBlank()) {
+                    currentScreen = AppScreen.IMPORT_CONFIG
+                } else {
+                    connectionManager.saveSelectedServer(selected)
+                    selectedServerLabel = selected.name ?: selected.host
+                    connected = false
+                    currentScreen = AppScreen.HOME
+                }
             }
         )
 
