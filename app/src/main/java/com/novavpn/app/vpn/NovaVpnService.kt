@@ -47,7 +47,7 @@ class NovaVpnService : android.net.VpnService() {
         serverHost = intent?.getStringExtra("selected_server_host") ?: serverHost
         serverPort = intent?.getIntExtra("selected_server_port", serverPort) ?: serverPort
 
-        startForeground(101, buildForegroundNotification())
+        startForeground(101, buildForegroundNotification(false))
         val rawConfig = intent?.getStringExtra("selected_server_config").orEmpty()
         val started = ensureVpnSession(rawConfig)
         if (!started) {
@@ -59,6 +59,7 @@ class NovaVpnService : android.net.VpnService() {
         }
         ConnectionStateManager(this).setConnected(true)
         broadcastState(true)
+        getSystemService(NotificationManager::class.java)?.notify(101, buildForegroundNotification(true))
         Log.i(TAG, "Xray core started for $serverName ($serverHost:$serverPort)")
         return START_STICKY
     }
@@ -134,10 +135,12 @@ class NovaVpnService : android.net.VpnService() {
         }
     }
 
-    private fun buildForegroundNotification(): Notification {
+    private fun buildForegroundNotification(connected: Boolean): Notification {
+        val stateText = if (connected) "Connected" else "Connecting"
+        val endpoint = if (serverHost.isBlank()) serverName else "$serverHost:$serverPort"
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("NovaVPN")
-            .setContentText("Connected: $serverName • $serverHost:$serverPort")
+            .setContentText("$stateText: $endpoint")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
