@@ -226,7 +226,19 @@ fun NovaVpnApp() {
             onOpenAd = { currentScreen = AppScreen.AD }
         )
 
-        AppScreen.LOCATION -> LocationScreen(onBack = { currentScreen = AppScreen.HOME })
+        AppScreen.LOCATION -> ServerListScreen(
+            onBack = { currentScreen = AppScreen.HOME },
+            onServerSelected = { selected ->
+                if (selected.rawConfig.isNullOrBlank()) {
+                    currentScreen = AppScreen.IMPORT_CONFIG
+                } else {
+                    connectionManager.saveSelectedServer(selected)
+                    selectedServerLabel = selected.name ?: selected.host
+                    connected = false
+                    currentScreen = AppScreen.HOME
+                }
+            }
+        )
 
         AppScreen.SETTINGS -> SettingsScreen(
             onBack = { currentScreen = AppScreen.HOME },
