@@ -40,16 +40,8 @@ class VpnConnectionController(
     }
 
     fun stopConnection() {
-        val intent = Intent(activity, NovaVpnService::class.java).apply {
-            action = NovaVpnService.ACTION_STOP
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            ContextCompat.startForegroundService(activity, intent)
-        } else {
-            activity.startService(intent)
-        }
-
+        // stopService invokes NovaVpnService.onDestroy(), which stops Xray and closes the TUN.
+        activity.stopService(Intent(activity, NovaVpnService::class.java))
         connectionStateManager.setConnected(false)
     }
 
