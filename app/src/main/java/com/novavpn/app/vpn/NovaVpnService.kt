@@ -8,6 +8,8 @@ import android.os.Build
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import com.novavpn.app.config.ConnectionStateManager
+import com.novavpn.app.engine.XrayRuntime
 import androidx.core.app.NotificationCompat
 
 class NovaVpnService : android.net.VpnService() {
@@ -42,41 +44,82 @@ class NovaVpnService : android.net.VpnService() {
         serverPort = intent?.getIntExtra("selected_server_port", serverPort) ?: serverPort
 
         startForeground(101, buildForegroundNotification())
-        ensureVpnSession()
-        Log.i(TAG, "VPN service started in foreground mode for $serverName ($serverHost:$serverPort)")
+        val rawConfig = intent?.getStringExtra("selected_server_config").orEmpty()
+        val started = ensureVpnSession(rawConfig)
+        if (!started) {
+            ConnectionStateManager(this).setConnected(false)
+            broadcastState(false)
+            stopVpnSession()
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        ConnectionStateManager(this).setConnected(true)
+        broadcastState(true)
+        Log.i(TAG, "Xray core started for $serverName ($serverHost:$serverPort)")
         return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onRevoke() {
+        stopVpnSession()
+        ConnectionStateManager(this).setConnected(false)
+        broadcastState(false)
+        stopSelf()
+        super.onRevoke()
+    }
+
     override fun onDestroy() {
         stopVpnSession()
+        ConnectionStateManager(this).setConnected(false)
+        broadcastState(false)
         Log.i(TAG, "VPN service destroyed")
         super.onDestroy()
     }
 
-    private fun ensureVpnSession() {
-        if (vpnInterface != null) {
-            return
+    private fun ensureVpnSession(rawConfig: String): Boolean {
+        if (rawConfig.isBlank()) {
+            Log.e(TAG, "Cannot start VPN: selected profile has no original share link")
+            return false
         }
 
-        try {
+        return try {
             val builder = Builder()
                 .setSession("NovaVPN :: $serverName")
                 .setMtu(1500)
-                .addAddress("10.8.0.2", 32)
+                .addAddress("10.8.0.2", 30)
                 .addRoute("0.0.0.0", 0)
                 .addDnsServer("1.1.1.1")
                 .addDnsServer("8.8.8.8")
 
-            vpnInterface = builder.establish()
-            Log.i(TAG, "VPN interface established successfully")
+            val established = builder.establish() ?: error("Android refused to establish the VPN interface")
+            vpnInterface = established
+            XrayRuntime.start(this, rawConfig, established.fd)
+            Log.i(TAG, "Android TUN and native Xray core started")
+            true
         } catch (throwable: Throwable) {
-            Log.e(TAG, "Failed to establish VPN interface", throwable)
+            Log.e(TAG, "Xray VPN startup failed", throwable)
+            try { vpnInterface?.close() } catch (_: Throwable) {}
+            vpnInterface = null
+            false
         }
     }
 
+    private fun broadcastState(connected: Boolean) {
+        sendBroadcast(Intent(ACTION_STATE).setPackage(packageName).putExtra(EXTRA_CONNECTED, connected))
+    }
+
+    companion object {
+        const val ACTION_STATE = "com.novavpn.app.VPN_STATE"
+        const val EXTRA_CONNECTED = "connected"
+    }
+
     private fun stopVpnSession() {
+        try {
+            XrayRuntime.stop()
+        } catch (throwable: Throwable) {
+            Log.w(TAG, "Xray core stop failed", throwable)
+        }
         try {
             vpnInterface?.close()
         } catch (throwable: Throwable) {
