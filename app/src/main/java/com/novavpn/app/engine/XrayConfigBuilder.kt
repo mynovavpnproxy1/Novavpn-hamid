@@ -63,7 +63,8 @@ object XrayConfigBuilder {
         val security = if (source.optString("tls") == "tls") "tls" else "none"
         val vmessHost = source.optString("host")
         val vmessSni = source.optString("sni").ifBlank { vmessHost.ifBlank { host } }
-        val query = Uri.parse("nova://import?type=${network}&security=${security}&sni=${Uri.encode(vmessSni)}&path=${Uri.encode(source.optString("path"))}&host=${Uri.encode(vmessHost)}")
+        val vmessPath = source.optString("path")
+        val query = Uri.parse("nova://import?type=${network}&security=${security}&sni=${Uri.encode(vmessSni)}&path=${Uri.encode(vmessPath)}&serviceName=${Uri.encode(vmessPath)}&host=${Uri.encode(vmessHost)}")
         return JSONObject().put("tag", "proxy").put("protocol", "vmess")
             .put("settings", settings).put("streamSettings", buildStreamSettings(query, network, security))
     }
