@@ -42,6 +42,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +60,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.novavpn.app.config.ConfigRepository
 import com.novavpn.app.config.ConnectionStateManager
 import com.novavpn.app.config.ImportConfigScreen
@@ -149,6 +151,24 @@ fun NovaVpnApp() {
         selectedServerLabel = connectionManager.getSelectedServerLabel()
     }
 
+    DisposableEffect(context) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(receiverContext: android.content.Context?, intent: Intent?) {
+                if (intent?.action == com.novavpn.app.vpn.NovaVpnService.ACTION_STATE) {
+                    connected = intent.getBooleanExtra(com.novavpn.app.vpn.NovaVpnService.EXTRA_CONNECTED, false)
+                    selectedServerLabel = connectionManager.getSelectedServerLabel()
+                }
+            }
+        }
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            android.content.IntentFilter(com.novavpn.app.vpn.NovaVpnService.ACTION_STATE),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+    }
+
     if (adGateOpen) {
         SponsoredAdScreen(
             countdownSeconds = adCountdown,
@@ -173,15 +193,14 @@ fun NovaVpnApp() {
             connected = connected,
             selectedServerLabel = selectedServerLabel,
             onConnectToggle = {
-                if (!connected && !adGateOpen) {
+                if (!connected) {
                     if (selectedServerLabel == "No server selected") {
                         currentScreen = AppScreen.SERVER_LIST
                         return@HomeScreen
                     }
-                    adGateOpen = true
-                    adCountdown = 5
-                    adCanClose = false
-                } else if (connected) {
+                    vpnController.startSelectedConnection()
+                    connected = connectionManager.isConnected()
+                } else {
                     vpnController.stopConnection()
                     connected = false
                 }
