@@ -89,6 +89,11 @@ class NovaVpnService : android.net.VpnService() {
         }
 
         return try {
+            // A repeated ACTION_START must not leak an old TUN descriptor or core loop.
+            runCatching { XrayRuntime.stop() }
+            try { vpnInterface?.close() } catch (_: Throwable) { }
+            vpnInterface = null
+
             val builder = Builder()
                 .setSession("NovaVPN :: $serverName")
                 .setMtu(1500)
