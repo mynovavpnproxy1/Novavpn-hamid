@@ -124,7 +124,7 @@ android {
 
 dependencies {
     // Pinned native Xray core (built by the upstream AndroidLibXrayLite project).
-    implementation(files(xrayAarFile))
+    implementation(files(xrayAarFile).builtBy(downloadXrayCore))
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
