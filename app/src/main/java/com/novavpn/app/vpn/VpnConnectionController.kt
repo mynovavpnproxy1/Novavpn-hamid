@@ -26,6 +26,7 @@ class VpnConnectionController(
             putExtra("selected_server_type", selected.type)
             putExtra("selected_server_host", selected.host)
             putExtra("selected_server_port", selected.port)
+            putExtra("selected_server_config", selected.rawConfig)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -34,7 +35,7 @@ class VpnConnectionController(
             activity.startService(intent)
         }
 
-        connectionStateManager.setConnected(true)
+        // Connection state is set by NovaVpnService only after native core startup succeeds.
         return true
     }
 
