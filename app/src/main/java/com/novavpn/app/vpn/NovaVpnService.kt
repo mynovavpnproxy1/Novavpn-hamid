@@ -3,6 +3,7 @@ package com.novavpn.app.vpn
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
@@ -141,15 +142,30 @@ class NovaVpnService : android.net.VpnService() {
     }
 
     private fun buildForegroundNotification(connected: Boolean): Notification {
-        val stateText = if (connected) "Connected" else "Connecting"
+        val stateText = if (connected) "VPN active" else "Connecting…"
         val endpoint = if (serverHost.isBlank()) serverName else "$serverHost:$serverPort"
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val stopIntent = Intent(this, NovaVpnService::class.java).apply {
+            action = ACTION_STOP
+        }
+        val stopPendingIntent = PendingIntent.getService(
+            this, 102, stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("NovaVPN")
             .setContentText("$stateText: $endpoint")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
-            .build()
+            .setOnlyAlertOnce(true)
+        if (connected) {
+            builder.addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Disconnect",
+                stopPendingIntent
+            )
+        }
+        return builder.build()
     }
 
     private fun createNotificationChannel() {
