@@ -13,7 +13,8 @@ data class SavedServerProfile(
     val port: Int,
     val username: String? = null,
     val protocol: String? = null,
-    val name: String? = null
+    val name: String? = null,
+    val rawConfig: String? = null
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("id", id)
@@ -23,6 +24,7 @@ data class SavedServerProfile(
         put("username", username)
         put("protocol", protocol)
         put("name", name)
+        put("rawConfig", rawConfig)
     }
 }
 
@@ -56,7 +58,8 @@ class ConfigRepository(context: Context) {
                             port = obj.optInt("port", 443),
                             username = obj.optString("username", "").ifBlank { null },
                             protocol = obj.optString("protocol", "").ifBlank { null },
-                            name = obj.optString("name", "").ifBlank { null }
+                            name = obj.optString("name", "").ifBlank { null },
+                            rawConfig = obj.optString("rawConfig", "").ifBlank { null }
                         )
                     )
                 }
@@ -79,7 +82,8 @@ class ConfigRepository(context: Context) {
             port = config.port,
             username = config.username,
             protocol = config.protocol,
-            name = config.name ?: config.host
+            name = config.name ?: config.host,
+            rawConfig = config.rawConfig
         )
         save(profile)
         return profile
