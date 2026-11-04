@@ -18,11 +18,13 @@ class NovaVpnService : android.net.VpnService() {
         const val ACTION_START = "com.novavpn.app.START_VPN"
         const val ACTION_STOP = "com.novavpn.app.STOP_VPN"
         const val CHANNEL_ID = "nova_vpn_foreground"
+        const val ACTION_STATE = "com.novavpn.app.VPN_STATE"
+        const val EXTRA_CONNECTED = "connected"
     }
 
     private var vpnInterface: ParcelFileDescriptor? = null
     private var serverName: String = "NovaVPN"
-    private var serverHost: String = "10.8.0.2"
+    private var serverHost: String = ""
     private var serverPort: Int = 443
 
     override fun onCreate() {
@@ -35,6 +37,8 @@ class NovaVpnService : android.net.VpnService() {
         val action = intent?.action
         if (action == ACTION_STOP) {
             stopVpnSession()
+            ConnectionStateManager(this).setConnected(false)
+            broadcastState(false)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -107,11 +111,6 @@ class NovaVpnService : android.net.VpnService() {
 
     private fun broadcastState(connected: Boolean) {
         sendBroadcast(Intent(ACTION_STATE).setPackage(packageName).putExtra(EXTRA_CONNECTED, connected))
-    }
-
-    companion object {
-        const val ACTION_STATE = "com.novavpn.app.VPN_STATE"
-        const val EXTRA_CONNECTED = "connected"
     }
 
     private fun stopVpnSession() {
