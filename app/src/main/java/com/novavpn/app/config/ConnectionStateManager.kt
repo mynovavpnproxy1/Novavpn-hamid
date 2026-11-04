@@ -13,6 +13,9 @@ class ConnectionStateManager(context: Context) {
             putString(KEY_SELECTED_SERVER_TYPE, server.type)
             putString(KEY_SELECTED_SERVER_HOST, server.host)
             putInt(KEY_SELECTED_SERVER_PORT, server.port)
+            putString(KEY_SELECTED_SERVER_USERNAME, server.username)
+            putString(KEY_SELECTED_SERVER_PROTOCOL, server.protocol)
+            putString(KEY_SELECTED_SERVER_RAW_CONFIG, server.rawConfig)
         }
     }
 
@@ -32,9 +35,10 @@ class ConnectionStateManager(context: Context) {
             type = type,
             host = host,
             port = port,
-            username = null,
-            protocol = null,
-            name = name ?: host
+            username = prefs.getString(KEY_SELECTED_SERVER_USERNAME, null),
+            protocol = prefs.getString(KEY_SELECTED_SERVER_PROTOCOL, null),
+            name = name ?: host,
+            rawConfig = prefs.getString(KEY_SELECTED_SERVER_RAW_CONFIG, null)
         )
     }
 
@@ -52,6 +56,9 @@ class ConnectionStateManager(context: Context) {
         private const val KEY_SELECTED_SERVER_TYPE = "selected_server_type"
         private const val KEY_SELECTED_SERVER_HOST = "selected_server_host"
         private const val KEY_SELECTED_SERVER_PORT = "selected_server_port"
+        private const val KEY_SELECTED_SERVER_USERNAME = "selected_server_username"
+        private const val KEY_SELECTED_SERVER_PROTOCOL = "selected_server_protocol"
+        private const val KEY_SELECTED_SERVER_RAW_CONFIG = "selected_server_raw_config"
         private const val KEY_CONNECTED = "vpn_connected"
     }
 }
