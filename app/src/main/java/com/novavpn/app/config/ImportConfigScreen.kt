@@ -43,46 +43,29 @@ fun ImportConfigScreen(
 ) {
     val context = LocalContext.current
     var configText by remember { mutableStateOf("") }
-    var validation by remember { mutableStateOf<ConfigParseResult?>(null) }
+    var statusMessage by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(8.dp),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF0C233A))
     ) {
         Column(
-            modifier = Modifier
-                .padding(18.dp),
+            modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White, modifier = Modifier.size(22.dp))
                 Spacer(modifier = Modifier.size(10.dp))
-                Text(
-                    text = "Import config",
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Import config", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
 
             OutlinedTextField(
                 value = configText,
-                onValueChange = { configText = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
-                label = { Text("Paste VLESS / VMess / Trojan / Shadowsocks / WireGuard link") },
+                onValueChange = { configText = it; statusMessage = null; errorMessage = null },
+                modifier = Modifier.fillMaxWidth().height(180.dp),
+                label = { Text("Paste one or many VLESS / VMess / Trojan / Shadowsocks links") },
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color(0xFF102B46),
                     unfocusedContainerColor = Color(0xFF102B46),
@@ -96,83 +79,58 @@ fun ImportConfigScreen(
 
             Button(
                 onClick = {
-                    val result = ServerConfigParser().parse(configText)
-                    validation = result
-                    if (result is ConfigParseResult.Success) {
-                        // Persist here before navigation so leaving this screen can never
-                        // discard a configuration that has just validated successfully.
-                        val stored = ConfigRepository(context).addFromConfig(result.server)
-                        onConfigImported(
-                            result.server.copy(
-                                name = stored.name ?: stored.host
-                            )
-                        )
+                    val parser = ServerConfigParser()
+                    val shareLinkRegex = Regex("(?i)(?:vless|vmess|trojan|ss)://[^\\s]+")
+                    val links = shareLinkRegex.findAll(configText)
+                        .map { it.value.trim().trimEnd(',', ';') }
+                        .distinct()
+                        .toList()
+
+                    val parsed = if (links.isNotEmpty()) {
+                        links.map { parser.parse(it) }
+                    } else {
+                        listOf(parser.parse(configText))
+                    }
+
+                    val valid = parsed.mapNotNull { (it as? ConfigParseResult.Success)?.server }
+                    val failures = parsed.mapNotNull { (it as? ConfigParseResult.Failure)?.message }
+
+                    if (valid.isEmpty()) {
+                        statusMessage = null
+                        errorMessage = failures.firstOrNull() ?: "هیچ لینک پشتیبانی‌شده‌ای پیدا نشد."
+                    } else {
+                        val repository = ConfigRepository(context)
+                        val saved = valid.map { repository.addFromConfig(it) }
+                        statusMessage = "${saved.size} سرور جداگانه ذخیره شد."
+                        errorMessage = if (failures.isNotEmpty()) "${failures.size} مورد نامعتبر نادیده گرفته شد." else null
+                        val first = valid.first()
+                        onConfigImported(first.copy(name = saved.first().name ?: saved.first().host))
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4AA7FF))
             ) {
-                Text("Save and select config")
+                Text("Save server(s)")
             }
 
-            when (val result = validation) {
-                is ConfigParseResult.Success -> {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFF123B5E), RoundedCornerShape(16.dp))
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = Color(0xFF7CFFB2),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.size(8.dp))
-                        Column {
-                            Text(
-                                text = "Valid configuration",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Type: ${result.server.type} • Host: ${result.server.host} • Port: ${result.server.port}",
-                                color = Color(0xFFB9D7F6),
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
+            statusMessage?.let { message ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().background(Color(0xFF123B5E), RoundedCornerShape(16.dp)).padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF7CFFB2), modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(message, color = Color.White, fontWeight = FontWeight.Bold)
                 }
-                is ConfigParseResult.Failure -> {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFF492A2E), RoundedCornerShape(16.dp))
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Error,
-                            contentDescription = null,
-                            tint = Color(0xFFFFB3B3),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.size(8.dp))
-                        Text(
-                            text = result.message,
-                            color = Color(0xFFFFE5E5),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-                null -> {
-                    Text(
-                        text = "No config submitted yet",
-                        color = Color(0xFF9FB9D8),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+            }
+            errorMessage?.let { message ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().background(Color(0xFF492A2E), RoundedCornerShape(16.dp)).padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Error, contentDescription = null, tint = Color(0xFFFFB3B3), modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(message, color = Color(0xFFFFE5E5), style = MaterialTheme.typography.bodyMedium, fontSize = 12.sp)
                 }
             }
         }

@@ -42,6 +42,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +60,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.novavpn.app.config.ConfigRepository
 import com.novavpn.app.config.ConnectionStateManager
 import com.novavpn.app.config.ImportConfigScreen
@@ -68,6 +70,15 @@ import com.novavpn.app.vpn.VpnConnectionController
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
+    @Deprecated("Use Activity Result APIs for new permission flows")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == com.novavpn.app.vpn.VpnPermissionHelper.REQ_CODE_VPN && resultCode == RESULT_OK) {
+            val manager = ConnectionStateManager(this)
+            VpnConnectionController(this, manager).startSelectedConnection()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -149,6 +160,24 @@ fun NovaVpnApp() {
         selectedServerLabel = connectionManager.getSelectedServerLabel()
     }
 
+    DisposableEffect(context) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(receiverContext: android.content.Context?, intent: Intent?) {
+                if (intent?.action == com.novavpn.app.vpn.NovaVpnService.ACTION_STATE) {
+                    connected = intent.getBooleanExtra(com.novavpn.app.vpn.NovaVpnService.EXTRA_CONNECTED, false)
+                    selectedServerLabel = connectionManager.getSelectedServerLabel()
+                }
+            }
+        }
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            android.content.IntentFilter(com.novavpn.app.vpn.NovaVpnService.ACTION_STATE),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+    }
+
     if (adGateOpen) {
         SponsoredAdScreen(
             countdownSeconds = adCountdown,
@@ -173,15 +202,19 @@ fun NovaVpnApp() {
             connected = connected,
             selectedServerLabel = selectedServerLabel,
             onConnectToggle = {
-                if (!connected && !adGateOpen) {
+                if (!connected) {
                     if (selectedServerLabel == "No server selected") {
                         currentScreen = AppScreen.SERVER_LIST
                         return@HomeScreen
                     }
-                    adGateOpen = true
-                    adCountdown = 5
-                    adCanClose = false
-                } else if (connected) {
+                    val selected = connectionManager.getSelectedServer()
+                    if (selected?.rawConfig.isNullOrBlank()) {
+                        currentScreen = AppScreen.IMPORT_CONFIG
+                    } else {
+                        vpnController.startSelectedConnection()
+                        connected = connectionManager.isConnected()
+                    }
+                } else {
                     vpnController.stopConnection()
                     connected = false
                 }
@@ -193,7 +226,19 @@ fun NovaVpnApp() {
             onOpenAd = { currentScreen = AppScreen.AD }
         )
 
-        AppScreen.LOCATION -> LocationScreen(onBack = { currentScreen = AppScreen.HOME })
+        AppScreen.LOCATION -> ServerListScreen(
+            onBack = { currentScreen = AppScreen.HOME },
+            onServerSelected = { selected ->
+                if (selected.rawConfig.isNullOrBlank()) {
+                    currentScreen = AppScreen.IMPORT_CONFIG
+                } else {
+                    connectionManager.saveSelectedServer(selected)
+                    selectedServerLabel = selected.name ?: selected.host
+                    connected = false
+                    currentScreen = AppScreen.HOME
+                }
+            }
+        )
 
         AppScreen.SETTINGS -> SettingsScreen(
             onBack = { currentScreen = AppScreen.HOME },
@@ -246,10 +291,14 @@ fun NovaVpnApp() {
         AppScreen.SERVER_LIST -> ServerListScreen(
             onBack = { currentScreen = AppScreen.SETTINGS },
             onServerSelected = { selected ->
-                connectionManager.saveSelectedServer(selected)
-                selectedServerLabel = selected.name ?: selected.host
-                connected = false
-                currentScreen = AppScreen.HOME
+                if (selected.rawConfig.isNullOrBlank()) {
+                    currentScreen = AppScreen.IMPORT_CONFIG
+                } else {
+                    connectionManager.saveSelectedServer(selected)
+                    selectedServerLabel = selected.name ?: selected.host
+                    connected = false
+                    currentScreen = AppScreen.HOME
+                }
             }
         )
 

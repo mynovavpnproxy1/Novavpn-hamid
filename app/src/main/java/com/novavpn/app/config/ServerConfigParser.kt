@@ -22,7 +22,8 @@ data class ServerConfig(
     val port: Int,
     val username: String? = null,
     val protocol: String? = null,
-    val name: String? = null
+    val name: String? = null,
+    val rawConfig: String? = null
 )
 
 sealed class ConfigParseResult {
@@ -37,7 +38,7 @@ class ServerConfigParser {
             return ConfigParseResult.Failure("Config is empty.")
         }
 
-        return when {
+        val parsed = when {
             input.startsWith("vmess://", ignoreCase = true) -> parseVmess(input)
             input.startsWith("vless://", ignoreCase = true) -> parseVless(input)
             input.startsWith("trojan://", ignoreCase = true) -> parseTrojan(input)
@@ -46,6 +47,10 @@ class ServerConfigParser {
             input.contains("://") && input.contains("@") -> parseUrlLike(input)
             input.contains(":") -> parseHostPort(input)
             else -> ConfigParseResult.Failure("Unsupported config format. Use VLESS, VMess, Trojan, Shadowsocks, WireGuard, or host:port.")
+        }
+        return when (parsed) {
+            is ConfigParseResult.Success -> parsed.copy(server = parsed.server.copy(rawConfig = input))
+            is ConfigParseResult.Failure -> parsed
         }
     }
 

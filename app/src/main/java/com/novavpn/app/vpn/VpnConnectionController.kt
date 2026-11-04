@@ -14,6 +14,14 @@ class VpnConnectionController(
 ) {
     fun startSelectedConnection(): Boolean {
         val selected = connectionStateManager.getSelectedServer() ?: return false
+        if (selected.rawConfig.isNullOrBlank()) {
+            android.widget.Toast.makeText(
+                activity,
+                "این سرور قدیمی اطلاعات کامل اتصال را ندارد؛ لطفاً کانفیگ را دوباره وارد کنید.",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            return false
+        }
         val prepared = VpnPermissionHelper(activity).prepareVpn()
         if (!prepared) {
             return false
@@ -26,6 +34,7 @@ class VpnConnectionController(
             putExtra("selected_server_type", selected.type)
             putExtra("selected_server_host", selected.host)
             putExtra("selected_server_port", selected.port)
+            putExtra("selected_server_config", selected.rawConfig)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -34,21 +43,13 @@ class VpnConnectionController(
             activity.startService(intent)
         }
 
-        connectionStateManager.setConnected(true)
+        // Connection state is set by NovaVpnService only after native core startup succeeds.
         return true
     }
 
     fun stopConnection() {
-        val intent = Intent(activity, NovaVpnService::class.java).apply {
-            action = NovaVpnService.ACTION_STOP
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            ContextCompat.startForegroundService(activity, intent)
-        } else {
-            activity.startService(intent)
-        }
-
+        // stopService invokes NovaVpnService.onDestroy(), which stops Xray and closes the TUN.
+        activity.stopService(Intent(activity, NovaVpnService::class.java))
         connectionStateManager.setConnected(false)
     }
 
