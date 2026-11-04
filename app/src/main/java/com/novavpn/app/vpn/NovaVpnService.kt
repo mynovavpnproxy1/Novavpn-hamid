@@ -91,8 +91,13 @@ class NovaVpnService : android.net.VpnService() {
             val builder = Builder()
                 .setSession("NovaVPN :: $serverName")
                 .setMtu(1500)
+                // The app process hosts Xray itself; exclude its UID from the VPN
+                // to prevent the core's outbound sockets from looping into its own TUN.
+                .addDisallowedApplication(packageName)
                 .addAddress("10.8.0.2", 30)
                 .addRoute("0.0.0.0", 0)
+                .addAddress("fd00:1:fd00:1::1", 126)
+                .addRoute("::", 0)
                 .addDnsServer("1.1.1.1")
                 .addDnsServer("8.8.8.8")
 
