@@ -70,6 +70,15 @@ import com.novavpn.app.vpn.VpnConnectionController
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
+    @Deprecated("Use Activity Result APIs for new permission flows")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == com.novavpn.app.vpn.VpnPermissionHelper.REQ_CODE_VPN && resultCode == RESULT_OK) {
+            val manager = ConnectionStateManager(this)
+            VpnConnectionController(this, manager).startSelectedConnection()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
