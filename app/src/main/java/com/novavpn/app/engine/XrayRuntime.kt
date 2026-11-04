@@ -2,6 +2,7 @@ package com.novavpn.app.engine
 
 import android.content.Context
 import android.provider.Settings
+import android.util.Base64
 import android.util.Log
 import go.Seq
 import libv2ray.CoreCallbackHandler
@@ -24,8 +25,13 @@ object XrayRuntime {
         val appContext = context.applicationContext
         if (!initialized) {
             Seq.setContext(appContext)
-            val deviceId = Settings.Secure.getString(appContext.contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
-            Libv2ray.initCoreEnv(appContext.filesDir.absolutePath, deviceId)
+            val androidId = Settings.Secure.getString(appContext.contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
+            val deviceKey = Base64.encodeToString(
+                androidId.toByteArray(Charsets.UTF_8).copyOf(32),
+                Base64.NO_PADDING or Base64.URL_SAFE
+            )
+            val assetPath = appContext.getDir("assets", Context.MODE_PRIVATE).absolutePath
+            Libv2ray.initCoreEnv(assetPath, deviceKey)
             initialized = true
         }
 
