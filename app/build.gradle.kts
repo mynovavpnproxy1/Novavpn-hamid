@@ -1,5 +1,29 @@
 import java.io.FileInputStream
 import java.util.Properties
+import java.net.URL
+
+val xrayAarFile = layout.buildDirectory.file("downloads/libv2ray.aar")
+val downloadXrayCore by tasks.registering {
+    outputs.file(xrayAarFile)
+    doLast {
+        val destination = xrayAarFile.get().asFile
+        if (!destination.exists() || destination.length() < 1_000_000L) {
+            destination.parentFile.mkdirs()
+            val connection = URL("https://github.com/2dust/AndroidLibXrayLite/releases/download/v26.10.31/libv2ray.aar").openConnection()
+            connection.connectTimeout = 30_000
+            connection.readTimeout = 120_000
+            connection.getInputStream().use { input ->
+                destination.outputStream().use { output -> input.copyTo(output) }
+            }
+            check(destination.length() >= 1_000_000L) { "Downloaded Xray AAR is missing or incomplete" }
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(downloadXrayCore)
+}
+
 
 plugins {
     id("com.android.application")
@@ -98,6 +122,8 @@ android {
 }
 
 dependencies {
+    // Pinned native Xray core (built by the upstream AndroidLibXrayLite project).
+    implementation(files(xrayAarFile))
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
