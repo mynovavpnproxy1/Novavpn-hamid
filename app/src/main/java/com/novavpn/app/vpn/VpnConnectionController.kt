@@ -14,6 +14,14 @@ class VpnConnectionController(
 ) {
     fun startSelectedConnection(): Boolean {
         val selected = connectionStateManager.getSelectedServer() ?: return false
+        if (selected.rawConfig.isNullOrBlank()) {
+            android.widget.Toast.makeText(
+                activity,
+                "این سرور قدیمی اطلاعات کامل اتصال را ندارد؛ لطفاً کانفیگ را دوباره وارد کنید.",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            return false
+        }
         val prepared = VpnPermissionHelper(activity).prepareVpn()
         if (!prepared) {
             return false
