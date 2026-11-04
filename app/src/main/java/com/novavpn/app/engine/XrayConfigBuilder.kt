@@ -105,7 +105,7 @@ object XrayConfigBuilder {
                     ?: uri.host.orEmpty()
                 val tls = JSONObject().put("serverName", tlsServerName).put("allowInsecure", false)
                 uri.getQueryParameter("fp")?.takeIf { it.isNotBlank() }?.let { tls.put("fingerprint", it) }
-                uri.getQueryParameter("alpn")?.takeIf { it.isNotBlank() }?.let { tls.put("alpn", JSONArray(it.split(",").map(String::trim))) }
+                uri.getQueryParameter("alpn")?.takeIf { it.isNotBlank() }?.let { tls.put("alpn", JSONArray(it.split(",").map { item -> item.trim() })) }
                 stream.put("tlsSettings", tls)
             }
             "reality" -> {
