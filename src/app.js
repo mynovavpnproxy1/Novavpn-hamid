@@ -15,6 +15,8 @@ function nativeVpn() {
   return window.Capacitor?.Plugins?.NovaVpn;
 }
 
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 connectButton.addEventListener('click', async () => {
   const config = configInput.value.trim();
   if (!config.startsWith('vless://')) {
@@ -30,16 +32,26 @@ connectButton.addEventListener('click', async () => {
   }
 
   connectButton.disabled = true;
-  setStatus('در حال اتصال', 'درخواست اتصال به سرویس اندروید ارسال شد.');
+  setStatus('در حال اتصال', 'در حال راه‌اندازی رابط VPN و موتور Xray...');
   try {
     await vpn.connect({ config });
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    const result = await vpn.getStatus();
-    if (result.connected) {
-      setStatus('موتور فعال است', 'موتور Xray اجرا شده است؛ برای تأیید عبور ترافیک باید اتصال سرور آزمایش شود.');
-    } else {
-      setStatus('اتصال برقرار نشد', result.error || 'موتور هنوز فعال نشده است.');
+    for (let attempt = 0; attempt < 30; attempt++) {
+      await wait(500);
+      const result = await vpn.getStatus();
+      if (result.connected) {
+        setStatus('موتور فعال است', 'Xray اجرا شده است؛ برقراری ارتباط واقعی با سرور هنوز باید آزمایش شود.');
+        return;
+      }
+      if (result.error) {
+        setStatus('خطا در اتصال', result.error);
+        return;
+      }
+      if (!result.starting && attempt > 1) {
+        setStatus('اتصال برقرار نشد', 'سرویس VPN متوقف شده است. لینک VLESS و گزارش خطا را بررسی کنید.');
+        return;
+      }
     }
+    setStatus('زمان اتصال طولانی شد', 'موتور هنوز پاسخ نداده است. یک بار قطع اتصال و تلاش مجدد را انجام دهید.');
   } catch (error) {
     setStatus('خطا در اتصال', error?.message || 'درخواست اتصال ناموفق بود.');
   } finally {
