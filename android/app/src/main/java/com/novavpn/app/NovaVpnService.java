@@ -85,19 +85,19 @@ public class NovaVpnService extends VpnService {
             Libv2ray.initCoreEnv(getFilesDir().getAbsolutePath(), "");
             String config = buildXrayConfig(vlessUri);
             coreController = Libv2ray.newCoreController(new CoreCallbackHandler() {
-                @Override public int startup() {
+                @Override public long startup() {
                     engineRunning = true;
                     lastError = "";
                     updateNotification("اتصال موتور Xray برقرار شد");
                     Log.i(TAG, "Xray core started");
                     return 0;
                 }
-                @Override public int shutdown() {
+                @Override public long shutdown() {
                     engineRunning = false;
                     Log.i(TAG, "Xray core stopped");
                     return 0;
                 }
-                @Override public int onEmitStatus(long status, String message) {
+                @Override public long onEmitStatus(long status, String message) {
                     Log.i(TAG, "Xray status " + status + ": " + message);
                     return 0;
                 }
