@@ -258,7 +258,13 @@ public class NovaVpnService extends VpnService {
     }
 
     private Notification createNotification(String content) {
-        return new Notification.Builder(this, CHANNEL_ID)
+        Notification.Builder builder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder = new Notification.Builder(this, CHANNEL_ID);
+        } else {
+            builder = new Notification.Builder(this);
+        }
+        return builder
             .setContentTitle("NOVA VPN")
             .setContentText(content)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
