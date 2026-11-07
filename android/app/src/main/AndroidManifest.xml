@@ -10,7 +10,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="NOVA VPN"
+        android:label="JEYRAN VPN"
         android:theme="@style/AppTheme.NoActionBar"
         android:usesCleartextTraffic="false">
 
