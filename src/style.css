@@ -2,26 +2,45 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #0a0a1a;
+  padding: 24px 0;
+  background: radial-gradient(circle at top, #171738, #0a0a1a 65%);
   color: #fff;
   font-family: sans-serif;
   display: grid;
   place-items: center;
 }
-.app { width: 90%; max-width: 420px; text-align: center; }
-header { margin-bottom: 55px; }
-h1 { color: #8b7cff; font-size: 34px; }
-.status { margin: 35px 0; color: #ff7777; font-size: 20px; }
+.app { width: min(90%, 440px); text-align: center; }
+header { margin-bottom: 32px; }
+h1 { color: #8b7cff; font-size: 34px; margin-bottom: 8px; }
+header p { color: #aaa; margin-top: 0; }
+.status { margin: 24px 0; color: #ffb36b; font-size: 20px; font-weight: 600; }
+label { display: block; text-align: right; margin: 16px 0 8px; color: #d8d5ff; }
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #49436f;
+  border-radius: 12px;
+  outline: none;
+  background: #111126;
+  color: #fff;
+  font: 13px/1.6 monospace;
+}
+textarea:focus { border-color: #8b7cff; }
 button {
-  width: 190px;
-  height: 190px;
-  border-radius: 50%;
-  border: 5px solid #7865ff;
-  background: #171735;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 14px;
+  border: 1px solid #7865ff;
+  border-radius: 14px;
+  background: #5142c9;
   color: white;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: bold;
 }
+button.secondary { background: #19192e; border-color: #4a4965; }
 button:disabled { opacity: .6; }
-#message { color: #aaa; margin-top: 30px; }
-footer { margin-top: 70px; color: #666; }
+#message { color: #aaa; margin-top: 20px; line-height: 1.7; min-height: 48px; }
+footer { margin-top: 42px; color: #666; }
