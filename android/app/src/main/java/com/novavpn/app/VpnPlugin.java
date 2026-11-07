@@ -70,6 +70,7 @@ public class VpnPlugin extends Plugin {
         JSObject result = new JSObject();
         result.put("connected", NovaVpnService.isEngineRunning());
         result.put("engineReady", NovaVpnService.isEngineRunning());
+        result.put("starting", NovaVpnService.isEngineStarting());
         result.put("error", NovaVpnService.getLastError());
         call.resolve(result);
     }
