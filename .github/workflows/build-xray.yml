@@ -96,7 +96,9 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleDebug
+          # Remove Gradle's generated JAR cache to recover from a corrupt transform cache.
+          rm -rf ~/.gradle/caches/jars-*
+          ./gradlew --no-daemon --refresh-dependencies --stacktrace :app:assembleDebug
 
       - name: Upload NOVA debug APK
         uses: actions/upload-artifact@v4
