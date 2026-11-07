@@ -61,12 +61,7 @@ public class VpnPlugin extends Plugin {
     @PluginMethod
     public void disconnect(PluginCall call) {
         Intent intent = new Intent(getContext(), NovaVpnService.class);
-        intent.setAction("DISCONNECT");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            getContext().startForegroundService(intent);
-        } else {
-            getContext().startService(intent);
-        }
+        getContext().stopService(intent);
         call.resolve();
     }
 
