@@ -37,4 +37,6 @@ dependencies {
     implementation files('libs/libv2ray.aar')
     implementation 'com.google.android.gms:play-services-ads:23.6.0'
     implementation 'androidx.core:core-splashscreen:1.0.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.activity:activity:1.9.3'
 }
