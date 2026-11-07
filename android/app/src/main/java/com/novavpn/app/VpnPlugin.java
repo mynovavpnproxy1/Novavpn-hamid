@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.net.VpnService;
 import android.os.Build;
 
+import androidx.activity.result.ActivityResult;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -13,15 +15,11 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "NovaVpn")
 public class VpnPlugin extends Plugin {
 
-    private static final int VPN_REQUEST_CODE = 1001;
-    private PluginCall pendingCall;
-
     @PluginMethod
     public void connect(PluginCall call) {
         Intent permissionIntent = VpnService.prepare(getContext());
 
         if (permissionIntent != null) {
-            pendingCall = call;
             startActivityForResult(call, permissionIntent, "vpnPermissionResult");
         } else {
             startVpn(call);
@@ -29,10 +27,7 @@ public class VpnPlugin extends Plugin {
     }
 
     @com.getcapacitor.annotation.ActivityCallback
-    private void vpnPermissionResult(
-        PluginCall call,
-        com.getcapacitor.ActivityResult result
-    ) {
+    private void vpnPermissionResult(PluginCall call, ActivityResult result) {
         if (result.getResultCode() == android.app.Activity.RESULT_OK) {
             startVpn(call);
         } else {
@@ -61,7 +56,6 @@ public class VpnPlugin extends Plugin {
         Intent intent = new Intent(getContext(), NovaVpnService.class);
         intent.setAction("DISCONNECT");
         getContext().startService(intent);
-
         call.resolve();
     }
 
