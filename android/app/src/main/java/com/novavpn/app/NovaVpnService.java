@@ -31,9 +31,11 @@ public class NovaVpnService extends VpnService {
     private ParcelFileDescriptor vpnInterface;
     private CoreController coreController;
     private static volatile boolean engineRunning = false;
+    private static volatile boolean engineStarting = false;
     private static volatile String lastError = "";
 
     public static boolean isEngineRunning() { return engineRunning; }
+    public static boolean isEngineStarting() { return engineStarting; }
     public static String getLastError() { return lastError; }
 
     @Override
@@ -60,6 +62,8 @@ public class NovaVpnService extends VpnService {
     }
 
     private void startTunnel(String vlessUri) {
+        engineStarting = true;
+        lastError = "";
         try {
             if (vlessUri == null || vlessUri.trim().isEmpty()) {
                 throw new IllegalArgumentException("ابتدا لینک VLESS را وارد کنید");
@@ -87,6 +91,7 @@ public class NovaVpnService extends VpnService {
             coreController = Libv2ray.newCoreController(new CoreCallbackHandler() {
                 @Override public long startup() {
                     engineRunning = true;
+                    engineStarting = false;
                     lastError = "";
                     updateNotification("اتصال موتور Xray برقرار شد");
                     Log.i(TAG, "Xray core started");
@@ -107,10 +112,12 @@ public class NovaVpnService extends VpnService {
                 throw new IllegalStateException("موتور Xray اجرا نشد");
             }
             engineRunning = true;
+            engineStarting = false;
             updateNotification("موتور Xray فعال است");
         } catch (Exception e) {
             lastError = e.getMessage() == null ? "خطای نامشخص در راه‌اندازی VPN" : e.getMessage();
             engineRunning = false;
+            engineStarting = false;
             Log.e(TAG, "VPN startup failed", e);
             stopCore();
             closeInterface();
@@ -241,6 +248,7 @@ public class NovaVpnService extends VpnService {
             coreController = null;
         }
         engineRunning = false;
+        engineStarting = false;
     }
 
     private void closeInterface() {
@@ -254,7 +262,6 @@ public class NovaVpnService extends VpnService {
     private void disconnectVpn() {
         stopCore();
         closeInterface();
-        lastError = "";
     }
 
     private Notification createNotification(String content) {
