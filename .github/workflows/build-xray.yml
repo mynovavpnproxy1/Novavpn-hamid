@@ -8,6 +8,7 @@ on:
       - 'android/xray-core/**'
       - '.github/workflows/build-xray.yml'
       - 'android/app/**'
+      - 'android/gradle/**'
       - 'src/**'
       - 'package.json'
       - 'package-lock.json'
