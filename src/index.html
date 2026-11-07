@@ -15,8 +15,11 @@
   </header>
   <main>
     <div id="status" class="status">قطع اتصال</div>
+    <label for="configInput">لینک کانفیگ VLESS</label>
+    <textarea id="configInput" rows="4" dir="ltr" spellcheck="false" placeholder="vless://UUID@server:443?security=tls&amp;type=ws..."></textarea>
     <button id="connectBtn">اتصال به VPN</button>
-    <p id="message">برای شروع اتصال را انتخاب کنید.</p>
+    <button id="disconnectBtn" class="secondary">قطع اتصال</button>
+    <p id="message">لینک VLESS خود را وارد و سپس اتصال را انتخاب کنید.</p>
   </main>
   <footer>NOVA VPN</footer>
 </div>
