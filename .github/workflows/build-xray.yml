@@ -1,7 +1,7 @@
-name: Build NOVA Xray Engine and Android APK
+name: Build JEYRAN VPN Xray Engine and Android APK
 
 concurrency:
-  group: nova-vpn-${{ github.ref }}
+  group: jeyran-vpn-${{ github.ref }}
   cancel-in-progress: true
 
 on:
@@ -62,7 +62,7 @@ jobs:
       - name: Upload Xray library
         uses: actions/upload-artifact@v4
         with:
-          name: nova-xray-engine
+          name: jeyran-xray-engine
           path: android/xray-core/libv2ray.aar
           if-no-files-found: error
 
@@ -88,7 +88,7 @@ jobs:
       - name: Download Xray library
         uses: actions/download-artifact@v4
         with:
-          name: nova-xray-engine
+          name: jeyran-xray-engine
           path: android/app/libs
 
       - name: Install Node dependencies
@@ -101,14 +101,13 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          # Remove Gradle's generated JAR cache to recover from a corrupt transform cache.
           rm -rf ~/.gradle/caches/jars-*
           ./gradlew --no-daemon --refresh-dependencies --stacktrace :app:assembleDebug
 
-      - name: Upload NOVA debug APK
+      - name: Upload JEYRAN debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: nova-vpn-debug-apk
+          name: jeyran-vpn-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
