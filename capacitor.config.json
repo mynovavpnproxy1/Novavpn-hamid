@@ -1,6 +1,6 @@
 {
-  "appId": "com.novavpn.app",
-  "appName": "NOVA VPN",
+  "appId": "com.jeyranvpn.app",
+  "appName": "JEYRAN VPN",
   "webDir": "src",
   "server": {
     "androidScheme": "https"
