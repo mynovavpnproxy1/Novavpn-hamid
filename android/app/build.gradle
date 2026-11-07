@@ -34,5 +34,6 @@ android {
 
 dependencies {
     implementation project(':capacitor-android')
+    implementation files('libs/libv2ray.aar')
     implementation 'com.google.android.gms:play-services-ads:23.6.0'
 }
