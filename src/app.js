@@ -4,7 +4,8 @@ const configInput = document.getElementById('configInput');
 const status = document.getElementById('status');
 const message = document.getElementById('message');
 
-configInput.value = localStorage.getItem('nova_vless_config') || '';
+const CONFIG_STORAGE_KEY = 'jeyran_vless_config';
+configInput.value = localStorage.getItem(CONFIG_STORAGE_KEY) || '';
 
 function setStatus(label, detail) {
   status.textContent = label;
@@ -19,12 +20,12 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 connectButton.addEventListener('click', async () => {
   const config = configInput.value.trim();
-  if (!config.startsWith('vless://')) {
+  if (!/^vless:\/\/[A-Za-z0-9%._~-]+@[^\s/?#]+/i.test(config)) {
     setStatus('کانفیگ نامعتبر', 'یک لینک معتبر VLESS وارد کنید.');
     return;
   }
 
-  localStorage.setItem('nova_vless_config', config);
+  localStorage.setItem(CONFIG_STORAGE_KEY, config);
   const vpn = nativeVpn();
   if (!vpn) {
     setStatus('نسخه اندروید لازم است', 'اتصال VPN فقط در نسخه نصب‌شده اندروید فعال است.');
@@ -39,7 +40,7 @@ connectButton.addEventListener('click', async () => {
       await wait(500);
       const result = await vpn.getStatus();
       if (result.connected) {
-        setStatus('موتور فعال است', 'Xray اجرا شده است؛ برقراری ارتباط واقعی با سرور هنوز باید آزمایش شود.');
+        setStatus('موتور فعال است', 'هسته Xray اجرا شده؛ دسترسی واقعی به اینترنت باید با آزمایش ترافیک بررسی شود.');
         return;
       }
       if (result.error) {
