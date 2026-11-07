@@ -1,5 +1,9 @@
 name: Build NOVA Xray Engine and Android APK
 
+concurrency:
+  group: nova-vpn-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
 
