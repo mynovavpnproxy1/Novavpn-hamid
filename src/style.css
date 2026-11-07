@@ -1,0 +1,27 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #0a0a1a;
+  color: #fff;
+  font-family: sans-serif;
+  display: grid;
+  place-items: center;
+}
+.app { width: 90%; max-width: 420px; text-align: center; }
+header { margin-bottom: 55px; }
+h1 { color: #8b7cff; font-size: 34px; }
+.status { margin: 35px 0; color: #ff7777; font-size: 20px; }
+button {
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  border: 5px solid #7865ff;
+  background: #171735;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+}
+button:disabled { opacity: .6; }
+#message { color: #aaa; margin-top: 30px; }
+footer { margin-top: 70px; color: #666; }

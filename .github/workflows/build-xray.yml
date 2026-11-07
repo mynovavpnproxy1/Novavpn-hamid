@@ -1,0 +1,59 @@
+name: Build NOVA Xray Engine
+
+on:
+  workflow_dispatch:
+
+  push:
+    paths:
+      - 'android/xray-core/**'
+      - '.github/workflows/build-xray.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: android/xray-core/go.mod
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platforms;android-37.0 build-tools;37.0.0 platform-tools'
+
+      - name: Install Android NDK
+        run: |
+          yes | sdkmanager --install "ndk;29.0.14206865"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> $GITHUB_ENV
+
+      - name: Build Xray AAR
+        working-directory: android/xray-core
+        run: |
+          mkdir -p assets data
+          bash gen_assets.sh download
+          cp -v data/*.dat assets/
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          gomobile init
+          go mod tidy -v
+          gomobile bind -v -androidapi 24 -trimpath -ldflags='-s -w -buildid= -checklinkname=0' ./
+
+      - name: Upload Xray library
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-xray-engine
+          path: |
+            android/xray-core/libv2ray.aar
+            android/xray-core/libv2ray.jar
+          if-no-files-found: error

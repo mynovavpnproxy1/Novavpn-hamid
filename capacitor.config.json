@@ -1,0 +1,8 @@
+{
+  "appId": "com.novavpn.app",
+  "appName": "NOVA VPN",
+  "webDir": "src",
+  "server": {
+    "androidScheme": "https"
+  }
+}
